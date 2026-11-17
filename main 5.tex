@@ -1,0 +1,257 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs,array,xltabular,enumitem,amsmath}
+\usepackage[hidelinks]{hyperref}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\setlist{itemsep=2pt,topsep=3pt,parsep=0pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\renewcommand{\arraystretch}{1.2}
+\sloppy
+
+\begin{document}
+
+\begin{center}
+{\Large\bfseries Category and Load Effects in HCP Working-Memory task-fMRI}\\[4pt]
+Revised Project Plan: Refinement, Readings, Timeline and Work Split\\[2pt]
+Introduction to Neural and Cognitive Modelling (INCM)\\[2pt]
+Sai Veeksha Tavva (2024113021) \quad Sahishnu Pawan Kumar (2024113016)\\[2pt]
+Plan date: 09 October 2026
+\end{center}
+
+%% ------------------------------------------------------------
+\section{Status and Key Dates}
+
+GLM and RSA exist in a first version. Remaining work: (i) refine both, (ii) replace library calls in the RSA with our own implementation, (iii) complete decoding, the rfMRI null and the load comparison, (iv) report, README and demo.
+
+\begin{xltabular}{\linewidth}{@{}p{3.8cm}p{2.8cm}Y@{}}
+\toprule
+\textbf{Milestone} & \textbf{Date} & \textbf{Deliverable}\\
+\midrule
+\endhead
+Proposal & 30/09/2026 & Done\\
+PPT submission & 11/10/2026 & PPT consisting of all the milestones \\
+Mid evaluation & 15/10/2026 & 1-page progress report (PDF)\\
+Final submission (target) & 17/11/2026 & Report (about 8 pages), zipped code and data, README\\
+Final submission (fallback) & 20/11/2026 & Only if the 17/11 slot slips\\
+Demo and viva & Final Evaluation Week & In-person; both members explain all code\\
+\bottomrule
+\end{xltabular}
+
+\subsection*{TA feedback}
+\begin{enumerate}
+\item \textbf{RSA must be our own implementation.} We write the RSA engine in NumPy (Section~\ref{sec:rsa}). Libraries such as \texttt{rsatoolbox} are used only as a numerical cross-check, and this is stated in the report.
+\item \textbf{STSP is on hold.} It is removed from the scope and from the mid-evaluation page, and appears only as one line under future work.
+\item \textbf{Neuromatch tasks 4, 5, 6.} These are the baseline pipeline; we add our own mutations (Section~\ref{sec:mut}). The report separates the reproduced baseline from our extensions.
+\end{enumerate}
+
+%% ------------------------------------------------------------
+\section{Refinement Targets}
+
+\subsection{GLM refinement (priority: high)}
+\begin{enumerate}
+\item Build the design matrix ourselves: 8 block regressors (load $\times$ category) convolved with a double-gamma HRF at TR $=0.7$\,s; the HRF is coded by us.
+\item Add nuisance terms: 12 motion parameters (6 plus derivatives), cosine drift (high-pass), optionally CSF/WM mean signals.
+\item Autocorrelation: compare OLS with AR(1) prewhitening and report how the $t$-maps change.
+\item Validate: correlate our contrast maps (2-back$>$0-back, face$>$others, etc.) with the HCP-provided maps for the same subjects; explain discrepancies.
+\item Motion QC: framewise displacement per run, with an exclusion rule fixed before looking at results.
+\item Pattern estimation: compare per-block $\beta$ with noise-normalised $t$-values. Optional: trial-level $\beta$ (least-squares-separate) to obtain more than one pattern per condition per run.
+\end{enumerate}
+
+\subsection{RSA, own implementation (priority: highest)}
+\label{sec:rsa}
+Each module gets a unit test on synthetic data.
+\begin{enumerate}
+\item \textbf{Pattern extraction:} ROI masking, voxel selection, per-condition pattern matrices.
+\item \textbf{Distance measures:} correlation distance, Euclidean, and cross-validated Mahalanobis (crossnobis), using LR and RL runs as the two folds, with multivariate noise normalisation from GLM residuals.
+\item \textbf{Haxby-style split-half identification:} within- vs.\ between-category correlation, pairwise identification accuracy, and the variant with the top category-selective voxels removed.
+\item \textbf{RDM comparison:} Spearman and Kendall $\tau_a$; Mantel test with our own permutation loop (condition labels permuted jointly on rows and columns).
+\item \textbf{Inference:} subject-level bootstrap, permutation null, noise ceiling (lower and upper bound).
+\item \textbf{Sub-RDM invariance:} $4\times4$ category RDM at 0-back vs.\ 2-back, testing whether load changes the scale (distance magnitude) as well as the structure (rank order).
+\item \textbf{Cross-check:} compare each output with \texttt{rsatoolbox} on the same input and report the maximum absolute difference.
+\end{enumerate}
+
+\subsection{Decoding, null and ROI definition}
+\begin{enumerate}
+\item ROIs from the HCP multimodal parcellation (occipito-temporal for category; dorsal frontal--parietal and cingulate for load). Fix the ROI list before running decoding.
+\item Leave-one-subject-out linear classifiers (chance 25\% for category, 50\% for load); standardisation fitted inside each training fold.
+\item Cross-load generalisation: train on 0-back and test on 2-back, and the reverse.
+\item rfMRI surrogate: run the same pipeline on rest data with a matched design (same number of volumes; block timing shifted or circularly permuted) so the null keeps rest autocorrelation.
+\item Confounds: 2-back blocks differ from 0-back in RT and accuracy; report behaviour and check that load results survive regressing these out.
+\end{enumerate}
+
+%% ------------------------------------------------------------
+
+\section{Neuromatch Exercises Q3--Q6 and Our Mutations}
+\label{sec:mut}
+
+We use questions Q3 to Q6 of the HCP fMRI exercise (``Mapping brain activation and representation with fMRI'', created by S.\ Jbabdi, University of Oxford) as the baseline pipeline. Q1--Q2 (summary plots, $t$-tests) and Q7--Q8 (template test, comparison with an artificial neural network) are out of scope. The report separates the reproduced baseline from our extensions.
+
+\begin{xltabular}{\linewidth}{@{}p{1.5cm}YY@{}}
+\toprule
+\textbf{Question} & \textbf{Baseline (reproduce)} & \textbf{Our mutation (novel)}\\
+\midrule
+\endhead
+Q3: GLM, betas and uncertainty & Regressors as stimulus-response models (ON/OFF); fit to the fMRI time series; compute betas, their uncertainty, and a statistical test on the betas. & Own GLM with 8 regressors (load $\times$ category); beta standard errors from residual variance; contrasts (2-back$>$0-back, category$>$others); motion and drift nuisance terms; AR(1) prewhitening; validation against HCP contrast maps.\\
+Q4: realistic response profile & Convolve the ON/OFF vectors with a Gaussian or gamma HRF and refit the GLM. & Own double-gamma HRF at TR $=0.7$\,s; compare HRF choices (Gaussian, gamma, double-gamma, with and without temporal derivative) by cross-validated fit across LR/RL runs.\\
+Q5: RDMs from beta maps & Compute RDMs from the estimated beta maps and map how they vary across the brain. & Own RSA engine (correlation and crossnobis distances, noise normalisation); own searchlight RDM maps; Haxby-style split-half identification; Mantel and Kendall tests; noise ceiling; 0-back vs.\ 2-back category sub-RDM comparison.\\
+Q6: linear decoder & Linear decoder of stimulus type from multivariate activity (whole brain or dimensionality-reduced). & Leave-one-subject-out decoding by ROI for category and load; cross-load train/test; permutation tests; rfMRI surrogate null.\\
+\bottomrule
+\end{xltabular}
+
+Every figure in the report is tagged as baseline or extension.
+
+%% ------------------------------------------------------------
+\section{Reading Plan}
+
+Read in order and finish each tier before the next. Keep two-sentence notes per paper in a shared file. Verify DOIs before the final citation.
+
+\subsection*{Tier 1: GLM refinement (by 12/10)}
+\begin{enumerate}[label=\arabic*.]
+\item Friston et al.\ (1994). GLM framework; contrasts and $t$-maps. 
+
+DOI: 10.1002/hbm.460020402
+
+\item Woolrich et al.\ (2001). Autocorrelation and prewhitening; justifies AR(1). 
+
+DOI: 10.1006/nimg.2001.0931
+\item Barch et al.\ (2013). HCP task design and expected WM/category activations. 
+
+DOI: 10.1016/j.neuroimage.2013.05.033
+\item Glasser et al.\ (2013). Minimal preprocessing and limits of alignment. 
+
+DOI: 10.1016/j.neuroimage.2013.04.127
+\end{enumerate}
+
+\subsection*{Tier 2: RSA implementation (by 18/10)}
+\begin{enumerate}[label=\arabic*.,resume]
+\item Kriegeskorte et al.\ (2008). RSA definition and RDM construction. 
+
+DOI: 10.3389/neuro.06.004.2008
+\item Walther et al.\ (2016). Reliability of dissimilarity measures; why crossnobis. 
+
+DOI: 10.1016/j.neuroimage.2015.12.012
+\item Nili et al.\ (2014). RSA toolbox: noise ceiling, RDM comparison, inference.
+
+DOI: 10.1371/journal.pcbi.1003553
+\item Diedrichsen and Kriegeskorte (2017). Representational models; theory behind distances. 
+
+DOI: 10.1371/journal.pcbi.1005508
+\end{enumerate}
+
+\subsection*{Tier 3: Category and load questions (by 25/10)}
+\begin{enumerate}[label=\arabic*.,resume]
+\item Haxby et al.\ (2001). Split-half identification and voxel-removal logic (re-read closely). 
+
+DOI: 10.1126/science.1063736
+\item Kriegeskorte and Kievit (2013). Representational geometry. 
+
+DOI: 10.1016/j.tics.2013.06.007
+\item Emrich et al.\ (2013). Sensory-cortex patterns and WM load. 
+
+DOI: 10.1523/JNEUROSCI.3573-12.2013
+\item Bernardi et al.\ (2020). Geometry of abstraction; cross-condition generalisation. 
+
+DOI: 10.1016/j.cell.2020.09.031
+\end{enumerate}
+
+\subsection*{Tier 4: Decoding, statistics, parcellation (by 01/11)}
+\begin{enumerate}[label=\arabic*.,resume]
+\item Haynes and Rees (2006). Decoding overview; leakage pitfalls. 
+
+DOI: 10.1038/nrn1931
+\item Stelzer et al.\ (2013). Permutation testing for MVPA. 
+
+DOI: 10.1016/j.neuroimage.2012.09.063
+\item Nichols and Holmes (2002). Permutation inference for neuroimaging. 
+
+DOI: 10.1002/hbm.1058
+\item Glasser et al.\ (2016). Parcellation used for ROIs. 
+
+DOI: 10.1038/nature18933
+\end{enumerate}
+
+Optional: 
+
+Mumford et al.\ (2012):
+
+DOI 10.1016/j.neuroimage.2011.08.076 (trial-wise $\beta$ estimation), if the trial-level extension is used. The Mantel (1967) test is cited from \emph{Cancer Research} 27(2):209--220 (no DOI).
+
+%% ------------------------------------------------------------
+\section{Timeline}
+
+\begin{xltabular}{\linewidth}{@{}p{2.3cm}p{3cm}Y@{}}
+\toprule
+\textbf{Dates} & \textbf{Phase} & \textbf{Goals and exit criteria}\\
+\midrule
+\endhead
+09--15 Oct & 0.Freeze and mid-evaluation & Freeze current GLM/RSA as v1; set up repo and folder layout; write and submit the 1-page progress report; read Tier 1; walk through Neuromatch tasks 4--6. Exit: mid-evaluation submitted.\\
+16--22 Oct & 1.GLM v2 and RSA core & Own HRF and design matrix, drift, AR(1); validation against HCP maps; RSA modules 1--2 with unit tests; read Tier 2. Exit: GLM maps match HCP maps; own correlation and crossnobis RDMs run.\\
+23--29 Oct & 2.Haxby and RDM inference & Split-half identification with and without top voxels; Mantel and Kendall; noise ceiling; 0-back vs.\ 2-back sub-RDM; cross-check against \texttt{rsatoolbox}; read Tier 3. Exit: H1 and the RDM part of H2 answered with figures.\\
+30 Oct--05 Nov & 3.Decoding and null & ROI decoding, cross-load train/test, permutation tests; rfMRI surrogate pipeline (H3); read Tier 4. Exit: all result tables exist with first-pass numbers.\\
+06--10 Nov & 4.Robustness and figure freeze & Sensitivity to ROI choice, volume vs.\ surface, motion threshold, $\beta$ vs.\ $t$; behavioural confound check. Exit: no new analyses after 10/11.\\
+11--14 Nov & 5.Report, README, demo & Write the report in the required six-section structure; README with run and data instructions; AI-use disclosure; demo notebook that runs end-to-end on a few subjects. Exit: full draft cross-read by the other member.\\
+15--16 Nov & Buffer & Fix compile and page count; reproducibility run from a clean clone.\\
+17 Nov & Submit & Zip code and data; report named with both roll numbers (20/11 only as fallback).\\
+\bottomrule
+\end{xltabular}
+
+%% ------------------------------------------------------------
+\section{Work Split}
+\label{sec:split}
+
+Split by module, with crossed review so both members can answer viva questions on everything. V = Veeksha, S = Sahishnu.
+
+\begin{xltabular}{\linewidth}{@{}p{1.5cm}p{3.6cm}Yp{1.6cm}@{}}
+\toprule
+\textbf{Assigned} & \textbf{Module} & \textbf{Responsibilities}\\
+\midrule
+\endhead
+V & GLM v2 & HRF, design matrix, drift, AR(1), motion QC, validation against HCP maps.\\
+S & ROIs and data & Data download and subset, parcellation ROIs, subject exclusion, behaviour (accuracy, RT) summary.\\
+V & RSA engine A & Pattern extraction, correlation and crossnobis distances, noise normalisation, unit tests.\\
+S & RSA engine B & Mantel test, Kendall/Spearman, bootstrap, noise ceiling, \texttt{rsatoolbox} cross-check.\\
+V & Haxby analysis (H1) & Split-half identification, voxel-removal variant, figures.\\
+S & Sub-RDM load analysis (H2) & 0-back vs.\ 2-back $4\times4$ RDM comparison; scale vs.\ structure.\\
+S & Decoding (H2) & LOSO classifiers, cross-load generalisation, permutation tests.\\
+V & rfMRI null (H3) & Surrogate design, matched-length rest segments, null distributions.\\
+V & Report, sections 1--3 & Aim, introduction and motivation, methods (GLM and RSA); references.\\
+S & Report, sections 4--6 & Results, discussion and conclusion; limitations.\\
+V & README and repo & Folder layout, run instructions, AI-use and attribution statement.\\
+S & Demo and slides & End-to-end demo notebook, presentation slides.\\
+\bottomrule
+\end{xltabular}
+
+%% ------------------------------------------------------------
+\section{Risks and Mitigations}
+
+\begin{xltabular}{\linewidth}{@{}p{5cm}Y@{}}
+\toprule
+\textbf{Risk} & \textbf{Mitigation}\\
+\midrule
+\endhead
+Only one block per condition per run, so few patterns per fold & Use LR/RL as folds; optionally trial-level $\beta$; report uncertainty via subject bootstrap.\\
+Tool category weakly selective & Report per-category results; do not rely on tools for H1.\\
+Mid-evaluation due in 6 days & Phase 0 is only a freeze plus one page; no new analysis before 15/10.\\
+Library output differs from our code & Cross-check on synthetic data first; debug before running real data.\\
+Decoding leakage & All scaling and feature selection inside training folds; subject-wise splits only.\\
+Data download size & Fixed 40--50 subject subset; only WM and rfMRI files.\\
+\bottomrule
+\end{xltabular}
+
+%% ------------------------------------------------------------
+\section{Submission Checklist}
+\begin{enumerate}
+\item Report follows the six required sections: aim, introduction and motivation, methods, results, discussion and conclusion, references.
+\item Baseline (Neuromatch) and own work are clearly separated; each member's contribution is stated.
+\item All papers, datasets, libraries, repositories and tutorials are acknowledged.
+\item AI tools are disclosed: which tool, for what, and which parts; no code generated entirely by AI.
+\item README covers environment, data download steps and how to reproduce each figure.
+\item Zip of code and data; report PDF named with both roll numbers.
+\item Both members can explain every module.
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,172 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[top=0.75in,bottom=0.8in,left=0.85in,right=0.85in]{geometry}
+\usepackage[T1]{fontenc}
+
+% ---------- NEWSLETTER TYPOGRAPHY ----------
+\usepackage{CrimsonPro}
+\let\oldnormalfont\normalfont
+\def\normalfont{\oldnormalfont\mdseries}
+\renewcommand{\familydefault}{\rmdefault}
+
+\usepackage[expansion=false]{microtype}
+\usepackage[table]{xcolor}
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx,array}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\definecolor{accent}{RGB}{31,78,121}
+\definecolor{lightbg}{RGB}{237,243,249}
+\usepackage[colorlinks=true,linkcolor=accent,citecolor=accent,urlcolor=accent]{hyperref}
+\usepackage[compact]{titlesec}
+\usepackage{sourcesanspro}
+
+\titleformat{\section}
+  {\sffamily\bfseries\normalsize\color{accent}}{\thesection}{0.6em}{}[\vspace{-2pt}\titlerule]
+\titlespacing*{\section}{0pt}{8pt}{3pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\linespread{1.05}
+\emergencystretch=3em
+\setlist[itemize]{itemsep=0.5pt, topsep=1.5pt, leftmargin=1.2em}
+\setlist[enumerate]{itemsep=0.5pt, topsep=1.5pt, leftmargin=1.5em}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\begin{document}
+
+\begin{center}
+  {\sffamily\bfseries\Large\color{accent}
+    Category and Load Effects in Human Connectome Project Working Memory and Auditory Language task-fMRI\par}
+  \vspace{3pt}
+  {\sffamily\footnotesize \textbf{Project Proposal}\ \ $|$\ \ Introduction to Neural and Cognitive Modelling (INCM)\par}
+  \vspace{4pt}
+  \begin{tabular}{@{}c@{\hspace{4em}}c@{}}
+    \textbf{Sai Veeksha Tavva} & \textbf{Sahishnu Pawan Kumar}\\
+    \small Roll No.\ 2024113021 & \small Roll No.\ 2024113016
+  \end{tabular}
+\end{center}
+\vspace{-6pt}
+
+\section{Aim and Scope}
+Working-memory (WM) tasks make two kinds of demand on the brain: a domain-general demand set by memory \emph{load} (the amount of information held at a given time), and a content-specific demand set by \emph{what} is held in mind. The HCP WM task crosses both in one paradigm (0-back vs.\ 2-back, with faces, places, tools and body parts). We use it to study how activity patterns relate to task demands, and which responses are shared across, or differ between, brain regions and conditions. We add the HCP language task (auditory) to test modality specificity.
+
+\begin{tcolorbox}[enhanced,colback=lightbg,colframe=lightbg,boxrule=0pt,arc=0pt,
+  borderline west={2.5pt}{0pt}{accent},left=7pt,right=5pt,top=2pt,bottom=2pt]
+\textbf{\sffamily Research question.} Do multivoxel patterns of task-fMRI activity differ between stimulus categories (face, place, tool, body), and does this category information persist when WM load rises from 0-back to 2-back?
+\end{tcolorbox}
+
+\textbf{Hypotheses.}
+\begin{enumerate}[label=\textbf{H\arabic*.}, leftmargin=2em]
+  \item Each category evokes a distinct, reproducible pattern in occipito-temporal cortex, even after removing the most category-selective voxels, as in Haxby et al.~\cite{haxby2001}.
+  \item Load mainly modulates dorsal frontal--parietal and cingulate regions, while category information lives in occipito-temporal regions, so category decoding generalises across load levels.
+  \item Both effects exceed a resting-state (rfMRI) control from the same subjects.
+  \item 2-back vs.\ 0-back demand decoding transfers to auditory Math vs.\ Story in frontal--parietal cortex only~\cite{duncan2010}.
+\end{enumerate}
+\textbf{Optional extension.} If time and access allow, we will test whether subsequent recognition memory (Remember/Know/New) differs between twins and non-twins; twin status is restricted data, so this needs separate approval.
+
+\section{Literature Review}
+\textbf{\sffamily\color{accent}The HCP and its WM task.}
+\begin{itemize}
+  \item The HCP maps human brain circuits and links them to behaviour and genetics in about 1200 healthy adults, using a twin and sibling design~\cite{vanessen2013}.
+  \item Task fMRI is acquired at 2~mm isotropic resolution (TR\,=\,0.7~s), and minimally preprocessed data are openly shared.
+  \item The WM task is an N-back variant, chosen partly for its reliability across subjects~\cite{drobyshevsky2006}, embedding faces, places, tools and body parts in 0-back and 2-back blocks. In 0-back, subjects respond to a fixed target shown at the start of the block; in 2-back, they respond whenever the current item matches the one shown two steps earlier.
+  \item The 2-back vs.\ 0-back contrast robustly engages dorsal frontal--parietal and cingulate regions in most subjects~\cite{vanessen2013,barch2013}.
+  \item Category contrasts recover the expected face, place and body regions~\cite{barch2013,kanwisher1997,epstein1998,downing2001}, though tools show no consistent selective activation~\cite{barch2013}.
+  \item Motion artifacts and imperfect cross-subject alignment are known limitations of the HCP pipeline~\cite{vanessen2013}.
+\end{itemize}
+
+\textbf{\sffamily\color{accent}Distributed category representations.}
+\begin{itemize}
+  \item Haxby et al.~\cite{haxby2001} showed that the \emph{pattern} of response across ventral temporal cortex identifies the viewed category.
+  \item Splitting each subject's data in half and comparing within- and between-category correlations gave about 96\% correct pairwise identification, which stayed near 94\% after removing the most category-selective voxels. This favours a distributed, overlapping code.
+  \item The study was within-subject only (6 subjects, 3.5~mm voxels, one-back task). Such pattern comparisons are now generalised as representational similarity analysis (RSA)~\cite{kriegeskorte2008}.
+\end{itemize}
+
+\textbf{\sffamily\color{accent}Gap.}
+\begin{itemize}
+  \item Univariate analyses of HCP data confirm that 2-back load recruits frontoparietal executive networks while stimulus visual processing activates ventral temporal cortex. Auditory Story/Math patterns are unexamined.
+  \item However, it remains unclear whether high cognitive load sharpens, compresses, or distorts the fine-grained representational geometry (4$\times$4 category distance structure) in visual cortices.
+  \item Does category-specific information dynamically emerge in frontoparietal cognitive control regions under high load (2-back), even if those regions show no category tuning during passive viewing (0-back)?
+\end{itemize}
+
+
+\section{Dataset}
+We use HCP Young Adult data, accessed after accepting the data-use terms, with acquisition and file-organisation details drawn from the HCP S1200 Release Reference Manual~\cite{hcps1200manual}.
+
+\vspace{1pt}
+\begingroup\footnotesize
+\setlength{\extrarowheight}{4pt}
+\rowcolors{1}{white}{lightbg}
+% Swapped tabular for tabularx, using 'l' for column 1 and 'Y' for column 2
+\begin{tabularx}{\linewidth}{@{}>{\bfseries\sffamily\color{accent}}l Y@{}}
+  Data & WM task fMRI (\texttt{tfMRI\_WM}, LR/RL runs), language task fMRI (\texttt{tfMRI\_LANGUAGE}~\cite{binder2011}) and the same subjects' rfMRI.\\
+  Subjects & 40--50 \emph{unrelated} adults, avoiding family-structure confounds and restricted-data needs for the core analysis.\\
+  Format & Minimally preprocessed volumes (\texttt{.nii.gz}) or CIFTI grayordinates, event timing files, and behaviour (accuracy, RT).\\
+  Design & Per run: 8 task blocks (4 categories $\times$ 2 loads; 2.5~s cue, 10 trials of 2.5~s) and 4 fixation blocks (15~s), each with 2 targets and 2--3 lures~\cite{barch2013}.\\
+  Exclusions & Excessive motion or missing runs; study-specific subject IDs used throughout.\\
+\end{tabularx}
+\endgroup
+
+
+\section{Methodology}
+\begin{enumerate}
+  \item \textbf{Condition maps.} Model 8 predictors (load $\times$ category) against fixation, using HCP contrast maps or our own GLM with motion regressors. Language-task predictors: Story, Math.
+  \item \textbf{ROIs.} Occipito-temporal ROIs (face-, place-, body-selective areas) for category; auditory cortex (Heschl's/superior temporal gyrus) for the auditory task; dorsal frontal--parietal/cingulate ROIs for load.
+  \item \textbf{Split-half RSA.} LR and RL runs serve as two halves (compare to the even/odd runs in Haxby et al.); we correlate condition patterns across halves into an $8\times8$ similarity matrix ($10\times10$ with Story, Math) and compare within- vs.\ between-condition correlations. We will also compare the $4\times4$ category sub-RDM during 0-back against 2-back (using a Mantel test or rank correlation) to evaluate whether pairwise distances remain structurally invariant across load states.
+  \item \textbf{Decoding.} Leave-one-subject-out linear classifiers for category (chance 25\%) and load (chance 50\%) separately within Occipito-Temporal and Frontoparietal ROIs; cross-load training/testing tests H2. Cross-modal transfer: H4.
+  \item \textbf{Cross-subject \& rfMRI control.} Dissimilarity matrices are compared across subjects and against a surrogate-design null built from rfMRI.
+\end{enumerate}
+
+\section{Evaluation Strategy}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}m{#1}}
+
+\begingroup\footnotesize
+\setlength{\extrarowheight}{4pt}
+\newlength{\rescol}
+\setlength{\rescol}{\dimexpr\linewidth-1.5cm-4\tabcolsep\relax}
+\rowcolors{2}{white}{lightbg}
+\begin{tabular}{@{}>{\sffamily\bfseries\color{accent}}L{1.5cm} L{0.5\rescol} L{0.5\rescol}@{}}
+  \rowcolor{white}\sffamily\bfseries\color{accent} Target & \sffamily\bfseries\color{accent} Analysis & \sffamily\bfseries\color{accent} Metric\\
+  \midrule
+  H1 & Split-half RSA, with/without top category voxels & Within- vs.\ between-category $r$; identification accuracy vs.\ 50\%\\
+  H2 & Category/load decoding; cross-load train--test; 0-back vs.\ 2-back sub-RDM comparison & Accuracy vs.\ chance (permutation, $t$-test); Mantel test / Spearman $r$ across loads; per-category results\\
+  H3 & Same pipeline on rfMRI surrogate design & Gap between task results and subject-specific null\\
+  H4 & Visual$\leftrightarrow$auditory demand transfer per ROI & Accuracy vs.\ 50\% (permutation)\\
+  Cross-subj. & Subject-to-group dissimilarity matrices & Pearson $r$ across subjects\\
+\end{tabular}
+\endgroup
+
+\vspace{2pt}
+\textbf{Limitations.} Cross-subject alignment~\cite{vanessen2013} may blur patterns, and tool patterns may be weakest~\cite{barch2013}; we will check sensitivity to ROI choice and volume vs.\ surface data.
+
+\begingroup
+\footnotesize
+\setlength{\parskip}{0pt}
+\begin{multicols}{2}[\section*{References}]
+\renewcommand{\section}[2]{} % Suppresses the internal section call & extra titlerule
+\begin{thebibliography}{99}
+\setlength{\itemsep}{0.5pt}
+\bibitem{hcps1200manual} Human Connectome Project (2017). \emph{WU-Minn HCP 1200 Subjects Data Release: Reference Manual}. 
+Link: {\small\urlstyle{same}\url{https://www.humanconnectome.org/storage/app/media/documentation/s1200/HCP_S1200_Release_Reference_Manual.pdf}}
+\bibitem{vanessen2013} Van Essen, D.C., et al. (2013). The WU-Minn Human Connectome Project: an overview. \emph{NeuroImage}, 80, 62--79.
+\bibitem{haxby2001} Haxby, J.V., et al. (2001). Distributed and overlapping representations of faces and objects in ventral temporal cortex. \emph{Science}, 293, 2425--2429.
+\bibitem{barch2013} Barch, D.M., et al. (2013). Function in the human connectome: task-fMRI and individual differences in behavior. \emph{NeuroImage}, 80, 169--189.
+\bibitem{kriegeskorte2008} Kriegeskorte, N., Mur, M., Bandettini, P. (2008). Representational similarity analysis. \emph{Front.\ Syst.\ Neurosci.}, 2, 4.
+\bibitem{kanwisher1997} Kanwisher, N., McDermott, J., Chun, M.M. (1997). The fusiform face area. \emph{J.\ Neurosci.}, 17, 4302--4311.
+\bibitem{epstein1998} Epstein, R., Kanwisher, N. (1998). A cortical representation of the local visual environment. \emph{Nature}, 392, 598--601.
+\bibitem{downing2001} Downing, P.E., et al. (2001). A cortical area selective for visual processing of the human body. \emph{Science}, 293, 2470--2473.
+\bibitem{drobyshevsky2006} Drobyshevsky, A., Baumann, S.B., Schneider, W. (2006). A rapid fMRI task battery. \emph{NeuroImage}, 31, 732--744.
+\bibitem{emrich2013} Emrich, S.M., Riggall, A.C., LaRocque, J.J., \& Postle, B.R. (2013). Distributed patterns of activity in sensory cortex reflect the precision of multiple items in visual working memory. \emph{Journal of Neuroscience}, 33(15), 6516--6523.
+\bibitem{bernardi2020} Bernardi, S., Benna, M.K., Rigotti, M., Mingoia, J., Siegelbaum, S.A., Fusi, S., \& Salzman, C.D. (2020). The Geometry of Abstraction in the Hippocampus and Prefrontal Cortex. \emph{Cell}, 183(4), 954--967.
+\bibitem{binder2011} Binder, J.R., et al. (2011). Mapping anterior temporal lobe language areas with fMRI. \emph{NeuroImage}, 54, 1465--1475.
+\bibitem{duncan2010} Duncan, J. (2010). The multiple-demand (MD) system of the primate brain. \emph{Trends Cogn.\ Sci.}, 14, 172--179.
+\end{thebibliography}
+\end{multicols}
+\endgroup
+
+\enddocument

@@ -1,0 +1,578 @@
+
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=0.85in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,longtable,tabularx,array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{caption}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlength{\parskip}{5pt}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.12}
+\setlist[itemize]{leftmargin=*,nosep}
+\setlist[enumerate]{leftmargin=*,nosep}
+
+\title{Analysis and Interpretation of HCP Task-fMRI Results\\
+\large GLM, RSA, and MVPA Decoding}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Scope and how to read this report}
+
+The analyses use five HCP participants: 103414, 105014, 103212, 115219, and 101107. Five participants are enough to test whether the analysis pipeline runs and to identify patterns worth investigating. They are not enough to make strong claims about the wider population.
+
+The notebook contains earlier exploratory cells and a later revised cross-task cell. Where the revised cell provides an updated analysis, this report prioritises it. Some older printed summaries disagree with one another; these are identified rather than silently combined.
+
+\section{A short guide to the terminology}
+
+\begin{itemize}
+    \item \textbf{fMRI:} Functional magnetic resonance imaging measures changes in blood oxygenation that are indirectly related to neural activity. It does not measure individual neurons firing directly.
+    \item \textbf{Grayordinate:} A location in the HCP cortical/subcortical representation. The notebook uses 91,282 grayordinates in total. For the analyses here, a grayordinate is treated as one spatial feature.
+    \item \textbf{Condition:} A task situation whose brain response is estimated. For the Working Memory (WM) task, the eight conditions are four categories (faces, places, tools, body) at two loads (0-back and 2-back).
+    \item \textbf{GLM:} A statistical model that estimates how strongly each location's fMRI time series is associated with each task condition, while accounting for nuisance effects such as head motion and slow signal drift.
+    \item \textbf{COPE:} Contrast of parameter estimates. It is the estimated size and direction of a contrast, for example Story greater than Math.
+    \item \textbf{T-statistic:} The estimated contrast divided by its estimated standard error. A larger absolute \(t\)-value indicates stronger evidence relative to estimated noise, but it is not itself an effect size.
+    \item \textbf{ROI:} Region of interest. Instead of analysing every grayordinate separately, the notebook groups selected Glasser atlas parcels into eight larger regions.
+    \item \textbf{Pattern:} A vector containing the estimated response across all features in an ROI for one task condition. Two conditions can have different patterns even if their average activation is similar.
+    \item \textbf{RDM:} Representational dissimilarity matrix. It records how different the activity patterns are for every pair of conditions.
+    \item \textbf{RSA:} Representational similarity analysis. It asks whether the pattern of similarities and differences between conditions is preserved across runs, loads, or subjects.
+    \item \textbf{MVPA:} Multivariate pattern analysis. It uses many features together to predict which condition produced a brain pattern. Decoding above chance means that the patterns contain information useful for distinguishing the labels.
+    \item \textbf{Chance accuracy:} The accuracy expected from random guessing when classes are balanced. It is 25\% for four-category classification and 50\% for a two-class problem.
+    \item \textbf{Permutation test:} A test that repeatedly shuffles labels in a controlled way to estimate how often an accuracy as high as the observed one could occur under a null arrangement.
+    \item \textbf{FDR correction:} False discovery rate correction adjusts a group of \(p\)-values to reduce the expected proportion of false positives among findings declared significant. The notebook reports adjusted values called \(q\)-values.
+\end{itemize}
+
+\section{Data and analysis setup}
+
+\subsection{Tasks and conditions}
+
+Two HCP task-fMRI datasets are used.
+
+\textbf{Working Memory (WM) task.} The notebook analyses four visual categories: faces, places, tools, and body. Each category is presented at two memory loads:
+\begin{itemize}
+    \item 0-back: a lower-load condition in which the participant responds to the current target rule.
+    \item 2-back: a higher-load condition in which the participant must compare the current item with one presented two trials earlier.
+\end{itemize}
+This gives eight conditions: 0-back faces, places, tools, body, followed by 2-back faces, places, tools, body.
+
+\textbf{Language task.} The two conditions are Story and Math. The contrast Story \(>\) Math is used in the GLM, and Story-versus-Math patterns are used in the decoding analysis.
+
+The HCP repetition time (TR) is 0.72 seconds. TR is the time between successive fMRI volumes. The revised analysis explicitly uses 0.72 seconds in its design matrices. Some CIFTI headers in the notebook print 1.000 seconds; the revised cell correctly notes that the header value is not the TR used for these HCP data.
+
+\subsection{Participants and ROIs}
+
+The five participants are 103414, 105014, 103212, 115219, and 101107. Each participant contributes two task runs, labelled LR and RL.
+
+Eight bilateral ROIs are constructed from the Glasser atlas:
+
+\begin{longtable}{p{0.17\textwidth}p{0.67\textwidth}r}
+\toprule
+\textbf{ROI label} & \textbf{Broad description} & \textbf{Grayordinates}\\
+\midrule
+EVC & Early visual cortex (V1, V2, V3); visual-processing reference region & 3,632\\
+OT\_ventral & Ventral occipitotemporal regions & 1,850\\
+OT\_lateral & Lateral occipitotemporal regions & 788\\
+AUD\_early & Early auditory regions & 1,187\\
+AUD\_assoc & Auditory association regions & 2,274\\
+FP\_dlpfc & Dorsolateral prefrontal/frontoparietal regions & 3,318\\
+FP\_parietal & Parietal frontoparietal regions & 2,460\\
+Cing\_preSMA & Cingulate and pre-supplementary motor regions & 1,547\\
+\bottomrule
+\end{longtable}
+
+The ROI labels are convenient groupings of atlas parcels, not claims that every parcel in a group has exactly the same function. EVC is useful as an early visual reference. OT regions are relevant to visual object/category processing. Auditory ROIs provide a useful comparison for visual WM stimuli and are also relevant to the Language task. Frontoparietal and cingulate regions are included because they may contribute to working-memory control and task demands.
+
+\section{First-level GLM: estimating task-related activity}
+
+\subsection{What the GLM does}
+
+An fMRI scan produces a time series at every grayordinate: a sequence of signal values across the scan. The GLM explains that time series as a combination of modelled task responses and nuisance effects. In simplified form,
+\[
+    Y = X\beta + \varepsilon,
+\]
+where \(Y\) is the measured time series, \(X\) is the design matrix, \(\beta\) contains the unknown response estimates, and \(\varepsilon\) is the residual error.
+
+The design matrix contains task-condition regressors. The task blocks are represented over time and convolved with a double-gamma haemodynamic response function (HRF). Convolution is necessary because the blood-oxygen response follows neural activity with a delay and a characteristic rise and fall; it does not change instantaneously when a stimulus appears. The model also includes motion regressors and slow-drift terms to reduce the chance that movement or scanner drift is mistaken for task activation.
+
+The GLM is fitted separately for the LR and RL runs. A contrast combines condition estimates. For example:
+\[
+    \text{Story} > \text{Math}
+    \quad\Longrightarrow\quad
+    \text{COPE} = \widehat{\beta}_{\text{Story}} -
+                  \widehat{\beta}_{\text{Math}}.
+\]
+A positive contrast means the estimated response is greater for Story than Math at that location. A negative contrast means the reverse.
+
+\subsection{OLS versus AR(1) prewhitening}
+
+The notebook compares ordinary least squares (OLS) with an AR(1)-prewhitened GLM.
+
+OLS estimates the model while treating residual errors at different time points as uncorrelated. fMRI residuals can be temporally correlated: a high residual at one time point may be followed by a similar residual at the next time point. This is called temporal autocorrelation. If it is ignored, the model can underestimate uncertainty and produce \(t\)-statistics that are too large.
+
+The AR(1) model approximates this dependence by relating the current residual to the previous residual:
+\[
+    \varepsilon_t = \rho\varepsilon_{t-1} + u_t,
+\]
+where \(\rho\) is the lag-one autocorrelation and \(u_t\) is the remaining innovation. Prewhitening transforms the data and design to reduce this serial dependence before estimating the contrast. The notebook estimates \(\rho\) from the residuals and applies an AR(1) correction.
+
+\subsection{Language task: OLS and AR(1) comparison}
+
+The earlier comparison cell reports the following mean absolute \(t\)-statistics:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Data} & \textbf{OLS mean \(|t|\)} & \textbf{AR(1) mean \(|t|\)} & \textbf{OLS increase}\\
+\midrule
+LR run & 1.4526 & 1.3849 & 4.89\%\\
+RL run & 0.9668 & 0.9342 & 3.48\%\\
+Combined FFX & 1.4023 & 1.3374 & 4.85\%\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The OLS values are modestly higher than the AR(1) values in these summaries. This is consistent with some inflation of apparent statistical strength when temporal autocorrelation is not modelled. It does not mean that every individual grayordinate is affected by the same amount.
+
+The revised comparison reports mean lag-one autocorrelation estimates of approximately 0.029 for both LR and RL runs:
+\[
+    \bar{\rho}_{LR}=0.0289,\qquad
+    \bar{\rho}_{RL}=0.0299.
+\]
+The reported standard deviations are about 0.093. These averages are small, but they do not imply that autocorrelation is absent everywhere; the standard deviations show variation across grayordinates.
+
+The revised cell reports an OLS-versus-AR(1) combined-map spatial correlation of \(r=0.9963\). This means the two maps have very similar spatial patterns overall. It does not mean their \(t\)-statistics are identical: the AR(1) correction can reduce their magnitudes while leaving the broad spatial arrangement similar.
+
+The same cell reports an LR-versus-RL correlation of \(r=0.5440\) for the language \(t\)-maps and \(r=0.3953\) for COPE maps. These are moderate or modest run-to-run similarities. The LR run also has a higher peak positive \(t\)-value than RL (9.27 versus 4.72). Thus, the task maps are not perfectly reproducible across runs, and the two run directions differ in apparent strength.
+
+At the uncorrected threshold \(t>3.1\), the revised comparison reports 2,253 Story-dominant grayordinates (2.47\%) for AR(1), compared with 2,785 (3.05\%) for OLS. For the reverse direction, \(t<-3.1\), it reports 5,467 (5.99\%) for AR(1), compared with 6,251 (6.85\%) for OLS. The smaller AR(1) counts are consistent with the reduction in absolute \(t\)-statistics.
+
+\textbf{Interpretation.} The language GLM detects spatially distributed differences between Story and Math. The OLS/AR(1) comparison indicates that temporal autocorrelation has a measurable, though not enormous, effect on the magnitude of the test statistics. The strong OLS--AR(1) map correlation indicates that the overall spatial pattern is largely preserved by the correction.
+
+\textbf{Important limitation.} The threshold \(t=3.1\) is explicitly uncorrected. It is a descriptive threshold, not a family-wise-error- or false-discovery-rate-corrected significance threshold. With tens of thousands of grayordinates, uncorrected threshold counts should not be presented as definitive maps of statistically significant activation.
+
+\subsection{Working-memory GLM contrasts}
+
+The revised cross-task cell reports the following uncorrected threshold counts for participant 103414:
+
+\begin{center}
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Contrast} & \textbf{Run/combination} & \textbf{Positive} & \textbf{Negative} & \textbf{Percent positive}\\
+\midrule
+2-back \(>\) 0-back & LR & 1,062 & 486 & 1.16\%\\
+2-back \(>\) 0-back & RL & 1,178 & 590 & 1.29\%\\
+2-back \(>\) 0-back & FFX & 2,331 & 1,090 & 2.55\%\\
+Story \(>\) Math & LR & 2,873 & 5,798 & 3.15\%\\
+Story \(>\) Math & RL & 269 & 1,007 & 0.29\%\\
+Story \(>\) Math & FFX & 3,229 & 6,970 & 3.54\%\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For WM, the contrast is 2-back minus 0-back. Positive values therefore indicate locations with a larger estimated response during the higher-load condition. Negative values indicate locations with a larger response during 0-back. The combined map has 2,331 positive and 1,090 negative grayordinates beyond the uncorrected threshold. This is a relatively sparse map compared with the total 91,282 grayordinates.
+
+The revised cell reports LR--RL map correlations of \(r=0.342\) for WM and \(r=0.544\) for Language. The WM contrast therefore shows weaker run-to-run spatial agreement in this participant than the Language contrast. This is a reminder that a contrast map can vary between runs even when the experimental design is the same.
+
+\textbf{Interpretation.} The WM load contrast produces a detectable but spatially limited pattern at the chosen uncorrected threshold in this participant. It should not be interpreted as proof that only those locations are involved in working memory. The result is specific to this contrast, threshold, model, and participant.
+
+\subsection{Comparing WM and Language maps}
+
+The revised cell compares the combined WM map (2-back \(>\) 0-back) with the Language map (Story \(>\) Math). Across all 91,282 grayordinates, it reports:
+\[
+    r_{\mathrm{Pearson}}=-0.3903,\qquad
+    \rho_{\mathrm{Spearman}}=-0.3048.
+\]
+These negative correlations indicate that, across locations, higher values in one contrast tend to be associated with lower values in the other contrast. This is a spatial association between two maps, not a direct measure of whether the tasks use completely separate brain networks.
+
+The notebook also counts locations that cross the uncorrected threshold in both maps:
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{p{5cm}rrr}
+\toprule
+\textbf{Map intersection} &
+\textbf{Observed overlap} &
+\textbf{Expected overlap} &
+\textbf{Observed/expected}\\
+\midrule
+WM positive $\cap$ Story $>$ Math & 5 & 82.5 & 0.061\\
+WM positive $\cap$ Math $>$ Story & 1,330 & 178.0 & 7.472\\
+WM negative $\cap$ Story $>$ Math & 291 & 38.6 & 7.547\\
+WM negative $\cap$ Math $>$ Story & 22 & 83.2 & 0.264\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The overlap is asymmetric. The positive WM map overlaps very little with the positive Story-minus-Math map, but overlaps more than expected with the negative Story-minus-Math map. Conversely, the negative WM map overlaps more than expected with the positive Story-minus-Math map. In plain language, some locations that show a larger response for 2-back than 0-back tend to show a larger Math than Story response, while some locations with a larger response for 0-back than 2-back tend to show a larger Story than Math response.
+
+This does not establish that WM and Language are opposites or that one task suppresses the other. The contrasts compare different task manipulations, and the overlap calculation is based on thresholded maps. The expected-overlap calculation is a simple reference based on the number of thresholded locations; spatial dependence between neighbouring grayordinates means it is not a complete statistical null model.
+
+The revised cell attempted a cortical spin test, which would rotate maps over the cortical surface to create a spatially constrained null distribution. It was skipped because the required sphere surface files were not found. Therefore, no spin-test \(p\)-value is available in the saved output. The whole-brain map correlation is reported descriptively and has no \(p\)-value because grayordinates are not independent observations.
+
+\section{RSA: comparing the geometry of condition patterns}
+
+\subsection{What a pattern and an RDM mean}
+
+A condition's activity pattern is a vector of response estimates across all grayordinates in an ROI. For example, the 0-back faces pattern in OT\_ventral is one vector; the 0-back places pattern is another.
+
+An RDM compares each pair of condition patterns. For eight WM conditions, the RDM is an \(8\times8\) matrix. The diagonal is zero because a condition is not different from itself. The matrix is symmetric because the distance from condition A to B is the same as from B to A. The upper triangle contains 28 unique pairwise distances.
+
+RSA focuses on the arrangement of these distances. If faces and places are relatively similar, while faces and tools are relatively different, RSA asks whether this relationship is reproduced in another run or under another load. It is not simply asking whether the overall activation level is higher.
+
+\subsection{Cross-validated distances}
+
+The notebook uses cross-validated (crossnobis-style) distances between patterns from LR and RL runs. In simplified form,
+\[
+d_{ij} =
+\frac{(\mathbf{a}_i-\mathbf{a}_j)^\top
+      (\mathbf{b}_i-\mathbf{b}_j)}{V},
+\]
+where \(\mathbf{a}\) and \(\mathbf{b}\) are the two run-specific patterns and \(V\) is the number of features. The first run estimates one pattern difference and the second run independently estimates the same difference. Their dot product is positive when the difference points in a similar direction across runs.
+
+A useful property of cross-validated distances is that their expected value is zero when there is no reproducible difference. Because the estimate is unbiased, an individual estimated distance can be negative. A negative crossnobis distance does not mean that two conditions have a physically negative distance; it means that the estimated difference did not reproduce consistently across the two runs.
+
+The notebook's implementation divides by the number of features, but does not apply a full noise covariance whitening step. Thus, these values should be treated as the notebook's cross-validated distance measure, not as a fully noise-normalised Mahalanobis distance.
+
+\subsection{Split-run WM identification}
+
+The notebook first performs a pattern-identification analysis. It correlates condition patterns across LR and RL runs and asks whether a condition is more similar to its matching condition than to the other categories. For four categories, random pairwise identification has chance accuracy 0.50.
+
+The group means across the five participants are:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{ROI} & \textbf{0-back} & \textbf{2-back} & \textbf{Cross-load}\\
+\midrule
+EVC & 0.825 & 0.742 & 0.758\\
+OT\_ventral & 0.825 & 0.700 & 0.892\\
+OT\_lateral & 0.917 & 0.692 & 0.767\\
+FP\_parietal & 0.617 & 0.600 & 0.658\\
+FP\_dlpfc & 0.525 & 0.633 & 0.567\\
+AUD\_assoc & 0.550 & 0.592 & 0.617\\
+Cing\_preSMA & 0.442 & 0.583 & 0.558\\
+AUD\_early & 0.467 & 0.458 & 0.483\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The three visual regions have the clearest descriptive pattern. EVC, OT\_ventral, and OT\_lateral are above the 0.50 chance level in both within-load comparisons. This means that, across runs, the pattern for a visual category is often more similar to the same category than to another category. OT\_lateral has the highest 0-back mean (0.917), while OT\_ventral and EVC are also high.
+
+The 2-back means in the visual regions are lower than their 0-back means. This is consistent with the possibility that higher memory load makes category patterns less easy to identify. However, the analysis does not by itself prove that load causes a reduction: there are only five participants and the estimates vary across participants.
+
+The AUD\_early results are close to chance (0.467, 0.458, and 0.483). Since the WM stimuli analysed here are visual, this is a useful negative-reference pattern: early auditory cortex does not show clear category identification in this analysis. It is not a perfect negative control, because auditory regions can still respond to non-auditory task demands or general state changes.
+
+The cross-load OT\_ventral mean is 0.892, higher than either within-load mean. This may look surprising. Cross-load identification asks whether a category pattern from one load matches the same category at the other load. It is possible for this score to be high even if one within-load score is lower, because the score depends on the relative matching and non-matching correlations across the two runs. It should not be interpreted as proof that 2-back improves representations. It is an unusual result that deserves inspection at the participant and pattern level.
+
+The group sign-flip tests and FDR-adjusted values do not show statistically significant effects after correction. For the visual regions, the smallest reported adjusted \(q\)-values are around 0.196. With only five participants, the possible sign-flip \(p\)-values are coarse; the minimum two-sided exact value is approximately 0.0625. Therefore, even fairly consistent-looking pilot means may not cross a conventional significance threshold.
+
+\textbf{Takeaway.} The identification analysis provides a descriptive indication that visual ROIs contain reproducible category information, particularly at 0-back. The evidence for a load-related reduction is suggestive, not conclusive. The auditory early ROI is near chance, as might be expected for visual category labels.
+
+\subsection{Language split-run RSA}
+
+For the Language task there are only two conditions, Story and Math. The notebook calculates the correlation between the Story-minus-Math pattern in LR and the corresponding Story-minus-Math pattern in RL. This is a measure of whether the spatial pattern of the Story--Math difference is reproducible across runs.
+
+The group mean correlations are:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{ROI} & \textbf{Mean run correlation} & \textbf{95\% bootstrap CI} & \textbf{FDR \(q\)}\\
+\midrule
+AUD\_assoc & 0.754 & [0.698, 0.800] & 0.075\\
+AUD\_early & 0.455 & [0.289, 0.595] & 0.075\\
+Cing\_preSMA & 0.528 & [0.417, 0.610] & 0.075\\
+EVC & 0.403 & [0.105, 0.564] & 0.124\\
+FP\_dlpfc & 0.749 & [0.669, 0.803] & 0.075\\
+FP\_parietal & 0.768 & [0.719, 0.809] & 0.075\\
+OT\_lateral & 0.535 & [0.424, 0.619] & 0.075\\
+OT\_ventral & 0.332 & [0.196, 0.450] & 0.075\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The strongest average run-to-run reproducibility is found in FP\_parietal (0.768), AUD\_assoc (0.754), and FP\_dlpfc (0.749). This means that the Story-versus-Math spatial difference is relatively consistent between runs in these regions. The lower means in OT\_ventral (0.332) and EVC (0.403) indicate weaker reproducibility there.
+
+The \(q\)-values are 0.075 or 0.124, so none is below 0.05 after the reported FDR correction. The results are therefore descriptive evidence of differing reliability across ROIs, not statistically confirmed group effects.
+
+The cross-validated Story--Math distances in the subject-level table are generally larger in auditory association and frontoparietal regions than in early auditory or ventral occipitotemporal regions. These distances are in the notebook's feature-normalised units and should not be compared as if they were a common physical scale across ROIs with different feature counts and noise properties.
+
+\textbf{Interpretation.} The Story--Math contrast appears reproducible across runs in several auditory-association and frontoparietal ROIs. This is compatible with the involvement of these regions in processing the language-task contrast, but the five-subject sample and non-significant corrected group tests mean the finding should remain preliminary.
+
+\subsection{Targeted H1 test: does category geometry remain similar across load?}
+
+The targeted H1 analysis compares two \(4\times4\) category RDMs: one for 0-back and one for 2-back. Each RDM has six unique category-pair distances:
+\[
+\{\text{faces--places, faces--tools, faces--body,}
+\text{ places--tools, places--body, tools--body}\}.
+\]
+The analysis calculates Spearman's rank correlation between these six distances at 0-back and the corresponding six distances at 2-back.
+
+Spearman's correlation measures whether the \emph{ordering} of distances is similar. For example, if faces--places is among the most similar pairs at 0-back and is also among the most similar pairs at 2-back, that contributes to a positive correlation. A value near \(+1\) means similar ordering; a value near zero means little rank-order relationship; a negative value means the ordering tends to reverse.
+
+The five-subject results vary substantially. The group means reported by the later Mantel-style group summary are:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{ROI} & \textbf{Mean Spearman structure correlation} & \textbf{95\% bootstrap interval}\\
+\midrule
+AUD\_assoc & 0.154 & [-0.246, 0.531]\\
+AUD\_early & 0.120 & [-0.383, 0.543]\\
+Cing\_preSMA & -0.040 & [-0.531, 0.440]\\
+EVC & 0.006 & [-0.623, 0.623]\\
+FP\_dlpfc & -0.131 & [-0.360, 0.223]\\
+FP\_parietal & 0.189 & [-0.143, 0.531]\\
+OT\_lateral & 0.383 & [0.120, 0.623]\\
+OT\_ventral & 0.360 & [-0.029, 0.669]\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+OT\_lateral has the largest positive mean (0.383), followed by OT\_ventral (0.360). This is compatible with some preservation of category-distance ordering across load in visual association cortex. However, the intervals are wide, and most include zero. The OT\_lateral interval is positive in this bootstrap summary, but it should not be treated as decisive evidence given the small number of participants, the small number of distances per RDM, and the number of ROIs examined.
+
+The subject-level values show why the group result needs caution. For example, EVC has correlations of \(-0.886\) in two participants but positive values in others. OT\_ventral is positive in most participants, but the strength varies. A group mean can conceal this heterogeneity.
+
+There is a particularly important limitation: each subject's correlation is based on only six category pairs. With six observations, Spearman's correlation can change considerably when one pair changes rank. The notebook includes leave-one-pair-out diagnostics for selected ROIs, which demonstrate that the correlation can be sensitive to individual pairs. These six distances are not six independent participants; the participant remains the unit for group-level inference.
+
+The later Mantel-style analysis permutes condition labels jointly across the rows and columns of one RDM. This preserves the RDM structure while testing whether the association is stronger than expected under relabelling. It is a useful within-subject diagnostic. The group summary then treats participants as the sampling units. It does not turn the six pairwise distances into independent population observations.
+
+\textbf{What H1 can currently say.} There is a weak-to-moderate positive average association in OT\_lateral and OT\_ventral, but the result is not sufficiently stable to conclude that category geometry is preserved under higher load. A non-significant or small correlation also does not automatically mean that representations are destroyed; it could reflect noise, low reliability, or a change in distance scale.
+
+\subsection{A distinction that matters: geometry versus scale}
+
+The notebook also compares the 0-back and 2-back RDMs in terms of both rank-order similarity and distance magnitude. These are different questions.
+
+\begin{itemize}
+    \item \textbf{Geometry/order:} Are the same category pairs relatively similar or dissimilar at both loads? This is what the Spearman correlation tests.
+    \item \textbf{Scale:} Are the distances generally larger or smaller at one load? This can change even if the rank ordering stays the same.
+\end{itemize}
+
+For example, imagine that the six 2-back distances are all half as large as the corresponding 0-back distances. The geometry could be perfectly preserved (Spearman correlation \(=1\)), even though the overall distance scale has been reduced. Conversely, the average distance could remain similar while the ordering of category pairs changes.
+
+The subject-level output contains negative and positive crossnobis distances, so simple means can be close to zero or negative. For this reason, mean absolute distance and vector norms are also reported in the notebook. Those summaries describe magnitude, but they do not by themselves establish whether the category geometry is stable.
+
+\textbf{Interpretation.} The current H1 results do not establish representational invariance. To make a stronger claim, a future analysis should explicitly model category structure and load-related scaling separately, and should define in advance what size of change would count as practically negligible.
+
+\section{MVPA decoding: can a classifier identify the task condition?}
+
+\subsection{What decoding tests}
+
+RSA asks how condition patterns relate to one another. Decoding asks a more direct prediction question: if the classifier is given a brain pattern, can it guess the condition label?
+
+For example, a four-way category decoder receives an activity pattern and predicts faces, places, tools, or body. If it guesses randomly and the classes are balanced, it will be correct about 25\% of the time. If it achieves 75\%, the pattern contains information that helps distinguish the categories.
+
+A load decoder predicts 0-back versus 2-back, so its chance level is 50\%. A Story-versus-Math decoder also has a 50\% chance level.
+
+Decoding above chance does not prove that the brain explicitly represents a category in the same way a person consciously experiences it. It means that the measured multivariate pattern contains information that a classifier can use to distinguish the labels.
+
+\subsection{Why leave-one-subject-out cross-validation is used}
+
+The notebook uses leave-one-subject-out (LOSO) decoding. In each fold, the classifier is trained using four participants and tested on the fifth participant, which was not used for training. This is repeated until every participant has served as the held-out test participant.
+
+This is a demanding test of generalisation. It asks whether the relationship between brain patterns and task labels learned from some people can predict labels in a new person. The HCP MSMAll-aligned feature space is used so that corresponding feature indices refer to aligned cortical locations across participants.
+
+There are five participants, giving 80 WM samples per ROI: eight conditions, two runs, and five participants. The Language dataset has 20 samples per ROI: two conditions, two runs, and five participants.
+
+The category data are centred within each load and run to remove the shared mean pattern and reduce the possibility that the category classifier uses load-related differences. The load dataset retains the load difference. Feature scaling is performed within each participant, rather than by using the held-out participants to set a common scale. This is intended to avoid leakage of information from test participants into the training procedure.
+
+The primary decoder is a linear ridge classifier. It is linear because it learns weighted combinations of features rather than a complicated nonlinear decision boundary. Ridge regularisation penalises excessively large weights, which is useful here because each ROI has hundreds or thousands of features but the dataset contains relatively few samples. The regularisation strength is fixed in the notebook rather than selected using the held-out test accuracy.
+
+\subsection{WM category decoding}
+
+The category decoder has four labels, so chance is 0.25. The main results are:
+
+\begin{longtable}{p{0.19\textwidth}p{0.34\textwidth}rrrr}
+\toprule
+\textbf{ROI} & \textbf{Analysis} & \textbf{Mean accuracy} & \textbf{Chance} & \textbf{\(p_{\rm perm}\)} & \textbf{\(q_{\rm FDR}\)}\\
+\midrule
+EVC & 0-back \(\rightarrow\) 0-back & 0.775 & 0.25 & 0.001 & 0.004\\
+EVC & 2-back \(\rightarrow\) 2-back & 0.525 & 0.25 & 0.006 & 0.018\\
+EVC & 0-back \(\rightarrow\) 2-back & 0.575 & 0.25 & 0.001 & 0.004\\
+EVC & 2-back \(\rightarrow\) 0-back & 0.650 & 0.25 & 0.001 & 0.004\\
+OT\_ventral & 0-back \(\rightarrow\) 0-back & 0.725 & 0.25 & 0.001 & 0.004\\
+OT\_ventral & 2-back \(\rightarrow\) 2-back & 0.600 & 0.25 & 0.002 & 0.007\\
+OT\_ventral & 0-back \(\rightarrow\) 2-back & 0.625 & 0.25 & 0.001 & 0.004\\
+OT\_ventral & 2-back \(\rightarrow\) 0-back & 0.600 & 0.25 & 0.001 & 0.004\\
+OT\_lateral & 0-back \(\rightarrow\) 0-back & 0.650 & 0.25 & 0.001 & 0.004\\
+OT\_lateral & 2-back \(\rightarrow\) 2-back & 0.600 & 0.25 & 0.001 & 0.004\\
+OT\_lateral & 0-back \(\rightarrow\) 2-back & 0.475 & 0.25 & 0.003 & 0.010\\
+OT\_lateral & 2-back \(\rightarrow\) 0-back & 0.625 & 0.25 & 0.001 & 0.004\\
+AUD\_early & 0-back \(\rightarrow\) 0-back & 0.225 & 0.25 & 0.625 & 0.694\\
+AUD\_early & 2-back \(\rightarrow\) 2-back & 0.225 & 0.25 & 0.626 & 0.694\\
+AUD\_early & 0-back \(\rightarrow\) 2-back & 0.225 & 0.25 & 0.674 & 0.710\\
+AUD\_early & 2-back \(\rightarrow\) 0-back & 0.325 & 0.25 & 0.183 & 0.261\\
+AUD\_assoc & 0-back \(\rightarrow\) 0-back & 0.475 & 0.25 & 0.014 & 0.035\\
+AUD\_assoc & 2-back \(\rightarrow\) 2-back & 0.325 & 0.25 & 0.240 & 0.331\\
+AUD\_assoc & 0-back \(\rightarrow\) 2-back & 0.400 & 0.25 & 0.031 & 0.059\\
+AUD\_assoc & 2-back \(\rightarrow\) 0-back & 0.375 & 0.25 & 0.055 & 0.100\\
+FP\_dlpfc & 0-back \(\rightarrow\) 0-back & 0.300 & 0.25 & 0.316 & 0.419\\
+FP\_dlpfc & 2-back \(\rightarrow\) 2-back & 0.300 & 0.25 & 0.325 & 0.419\\
+FP\_dlpfc & 0-back \(\rightarrow\) 2-back & 0.175 & 0.25 & 0.899 & 0.899\\
+FP\_dlpfc & 2-back \(\rightarrow\) 0-back & 0.175 & 0.25 & 0.868 & 0.890\\
+FP\_parietal & 0-back \(\rightarrow\) 0-back & 0.450 & 0.25 & 0.028 & 0.056\\
+FP\_parietal & 2-back \(\rightarrow\) 2-back & 0.375 & 0.25 & 0.118 & 0.181\\
+FP\_parietal & 0-back \(\rightarrow\) 2-back & 0.450 & 0.25 & 0.007 & 0.020\\
+FP\_parietal & 2-back \(\rightarrow\) 0-back & 0.425 & 0.25 & 0.014 & 0.035\\
+Cing\_preSMA & 0-back \(\rightarrow\) 0-back & 0.450 & 0.25 & 0.024 & 0.053\\
+Cing\_preSMA & 2-back \(\rightarrow\) 2-back & 0.225 & 0.25 & 0.642 & 0.694\\
+Cing\_preSMA & 0-back \(\rightarrow\) 2-back & 0.250 & 0.25 & 0.529 & 0.642\\
+Cing\_preSMA & 2-back \(\rightarrow\) 0-back & 0.250 & 0.25 & 0.576 & 0.678\\
+\bottomrule
+\end{longtable}
+
+The arrows indicate the load used for training followed by the load used for testing. For example, 0-back \(\rightarrow\) 2-back means that the classifier learns category patterns from 0-back samples in the four training participants and is then tested on 2-back samples in the held-out participant. This is a cross-load generalisation test.
+
+The strongest and most consistent category-decoding results are in the visual regions:
+\begin{itemize}
+    \item \textbf{EVC:} 0-back within-load accuracy is 0.775, well above the 0.25 chance level. The 2-back within-load accuracy is lower at 0.525, but still above chance. Both cross-load directions are also above chance (0.575 and 0.650).
+    \item \textbf{OT\_ventral:} Accuracy is 0.725 at 0-back and 0.600 at 2-back. Both cross-load directions are around 0.60--0.625. This indicates category information is available at both loads and can generalise between loads to some extent.
+    \item \textbf{OT\_lateral:} Within-load accuracy is 0.650 at 0-back and 0.600 at 2-back. Training at 0-back and testing at 2-back gives 0.475, while the reverse direction gives 0.625. The directional difference suggests that cross-load transfer is not perfectly symmetric.
+\end{itemize}
+
+The EVC and OT results support the idea that visual cortex contains information that distinguishes the four visual categories. The lower 2-back accuracy in EVC and OT\_ventral is compatible with a reduction in category information at higher load, but the table alone does not prove that the reduction is statistically significant relative to 0-back. The permutation tests shown test each accuracy against its chance level, not the paired difference between 0-back and 2-back.
+
+AUD\_early is close to chance across the four category analyses. This is consistent with the expectation that early auditory cortex should not strongly distinguish visual stimulus categories. AUD\_assoc has some above-chance values, particularly 0-back within-load (0.475, \(q=0.035\)), but the 2-back result is weaker. This may reflect broader task-related information, imperfect control of nuisance factors, or genuine information outside the primary visual ROIs. It should not be interpreted as evidence that auditory association cortex is a primary visual category region.
+
+Frontoparietal category decoding is generally weaker than visual ROI decoding. FP\_parietal shows modest above-chance accuracies in some analyses, while FP\_dlpfc is close to chance. This fits the idea that these regions may be more involved in task control and load than in the identity of the visual category.
+
+\subsection{Cross-load category generalisation}
+
+The notebook also calculates, for each ROI, the average within-load accuracy minus the average cross-load accuracy. A value near zero means the decoder performs similarly within and across loads. A positive value means cross-load accuracy is lower, suggesting that some category information does not transfer perfectly between loads.
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+\textbf{ROI} & \textbf{Mean within--cross difference} & \textbf{95\% bootstrap CI}\\
+\midrule
+EVC & +0.037 & [-0.062, 0.138]\\
+OT\_ventral & +0.050 & [-0.013, 0.113]\\
+OT\_lateral & +0.075 & [0.025, 0.138]\\
+AUD\_early & -0.050 & [-0.100, 0.000]\\
+AUD\_assoc & +0.013 & [-0.113, 0.150]\\
+FP\_dlpfc & +0.125 & [-0.013, 0.275]\\
+FP\_parietal & -0.025 & [-0.075, 0.025]\\
+Cing\_preSMA & +0.087 & [-0.050, 0.237]\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+OT\_lateral has the clearest positive within--cross difference, and its reported interval is above zero. This suggests that category information in this ROI is more easily decoded when training and testing at the same load than when transferring between loads. The other intervals include zero or touch it, so their differences are less clear. This is a descriptive bootstrap analysis; the notebook does not provide a permutation test for this within-versus-cross difference.
+
+\subsection{WM load decoding}
+
+The load decoder distinguishes 0-back from 2-back. Chance is 0.50. The results are:
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{ROI} & \textbf{Mean accuracy} & \textbf{Chance} & \textbf{\(p_{\rm perm}\)} & \textbf{\(q_{\rm FDR}\)}\\
+\midrule
+EVC & 0.650 & 0.50 & 0.018 & 0.042\\
+OT\_ventral & 0.525 & 0.50 & 0.394 & 0.492\\
+OT\_lateral & 0.600 & 0.50 & 0.081 & 0.129\\
+AUD\_early & 0.612 & 0.50 & 0.073 & 0.122\\
+AUD\_assoc & 0.612 & 0.50 & 0.058 & 0.101\\
+FP\_dlpfc & 0.650 & 0.50 & 0.027 & 0.056\\
+FP\_parietal & 0.725 & 0.50 & 0.001 & 0.004\\
+Cing\_preSMA & 0.575 & 0.50 & 0.171 & 0.253\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The clearest load-decoding result is in FP\_parietal: mean accuracy is 0.725, with \(q=0.004\). This means that the multivariate pattern in this region distinguishes 0-back from 2-back in participants who were held out from training. FP\_dlpfc and EVC have mean accuracies of 0.650, but their adjusted results are borderline: \(q=0.056\) and \(q=0.042\), respectively. EVC passes the notebook's reported FDR threshold, while FP\_dlpfc narrowly does not.
+
+This is an important distinction: load information is not confined to frontoparietal cortex in these data. The EVC result indicates that the visual cortex patterns also contain information associated with load. That information could reflect changes in attention, visual processing, task strategy, or other load-correlated effects; decoding alone cannot identify the mechanism.
+
+The AUD\_early and AUD\_assoc accuracies are also above 0.50 numerically, but their adjusted \(q\)-values are not below 0.05. These results may be noise or may reflect non-specific task effects. They should not be described as statistically reliable load representations based on this analysis.
+
+\subsection{Language Story-versus-Math decoding}
+
+The Language decoder is binary, so chance is 0.50.
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{ROI} & \textbf{Mean accuracy} & \textbf{95\% bootstrap CI} & \textbf{\(p_{\rm perm}\)} & \textbf{\(q_{\rm FDR}\)}\\
+\midrule
+EVC & 0.50 & [0.10, 0.90] & 0.606 & 0.606\\
+OT\_ventral & 1.00 & [1.00, 1.00] & 0.006 & 0.010\\
+OT\_lateral & 0.90 & [0.70, 1.00] & 0.026 & 0.030\\
+AUD\_early & 0.90 & [0.70, 1.00] & 0.026 & 0.030\\
+AUD\_assoc & 1.00 & [1.00, 1.00] & 0.003 & 0.006\\
+FP\_dlpfc & 1.00 & [1.00, 1.00] & 0.003 & 0.006\\
+FP\_parietal & 1.00 & [1.00, 1.00] & 0.003 & 0.006\\
+Cing\_preSMA & 1.00 & [1.00, 1.00] & 0.003 & 0.006\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The classifier distinguishes Story from Math very accurately in most ROIs. It reaches 100\% mean accuracy in OT\_ventral, AUD\_assoc, FP\_dlpfc, FP\_parietal, and Cing\_preSMA. OT\_lateral and AUD\_early reach 90\%. EVC is at chance.
+
+At first glance, perfect accuracy in several regions may seem surprising. It means that in this particular five-participant dataset, the classifier correctly predicts all held-out Story/Math test samples in those ROIs. It does not mean that the regions are exclusively language regions or that they encode linguistic meaning in a specific way. Story and Math may differ in multiple ways, including auditory content, task structure, attention, semantic processing, and other stimulus properties. The decoder identifies any pattern that reliably separates the two labels.
+
+The very small Language dataset is important: there are only 20 samples in total, four per participant (two conditions in each of two runs). With only four held-out samples per participant, one or two classification errors would change that participant's accuracy substantially. The perfect group scores therefore need replication with more participants and careful validation. The EVC result at chance is a useful contrast, although it does not establish that visual cortex has no response to the task.
+
+\textbf{Interpretation.} Story and Math produce distinguishable patterns in several ROIs, especially auditory-association and frontoparietal regions. The result is consistent with those regions carrying information that separates the two task conditions. It is not a selective test of language comprehension alone.
+
+\subsection{How the permutation \(p\)-values and FDR \(q\)-values should be read}
+
+The notebook uses 1,000 permutations for the WM and Language decoding tests. Within each permitted block, labels are shuffled while preserving the experimental structure. The full LOSO analysis is then repeated for each shuffle. The reported permutation \(p\)-value estimates how often the shuffled analysis reaches an accuracy at least as high as the observed accuracy.
+
+With 1,000 permutations, the smallest possible reported \(p\)-value using the plus-one correction is \(1/1001\), approximately 0.001. Therefore, a printed value of 0.001 means the observed accuracy was at or near the upper extreme of the sampled permutation distribution; it does not mean the true probability is exactly 0.001.
+
+The \(q\)-value adjusts for the multiple ROI-by-analysis tests. It is the adjusted value that should be used when discussing whether a result passes the notebook's FDR threshold. For example, FP\_parietal load decoding has \(p=0.001\) and \(q=0.004\), so it remains below 0.05 after the reported correction. FP\_dlpfc load decoding has \(p=0.027\), but \(q=0.056\), so it does not pass the 0.05 FDR threshold.
+
+The notebook itself notes that the family of tests should ideally be restricted to the pre-specified hypotheses. The reported FDR correction is across all ROI-by-analysis rows in the table. If the scientific hypotheses were specified in advance, a final report should define the family of tests accordingly and rerun the correction for that family.
+
+\subsection{Linear SVM cross-check}
+
+The notebook also runs a linear support vector machine (SVM) with a StandardScaler fitted only on the training participants in each LOSO fold. This is an additional classifier, separate from the primary ridge decoder. The SVM results are reported as mean accuracy and standard deviation across five held-out participants, without the same permutation and FDR analysis used for the ridge results.
+
+The SVM broadly supports some of the same descriptive patterns: category accuracy is strongest in visual ROIs, load decoding is relatively high in FP\_dlpfc and FP\_parietal, and Story-versus-Math accuracy is high in several auditory and frontoparietal ROIs. However, SVM values should be treated as a robustness check rather than a second inferential result. They are not directly interchangeable with the ridge results because the classifier, scaling procedure, and regularisation differ.
+
+One caution is especially important: the SVM summary shows perfect Story-versus-Math accuracy in several ROIs. Since the SVM output has no permutation \(p\)-values or confidence intervals in this cell, it cannot independently establish statistical significance. The primary ridge decoder and its permutation tests remain the main inferential decoding results in this notebook.
+
+\section{Overall interpretation up to MVPA}
+
+The results can be summarised in four points.
+
+\begin{enumerate}
+    \item \textbf{The GLM identifies task-related spatial patterns, but the maps need cautious interpretation.} The OLS and AR(1) maps are highly correlated, while AR(1) generally reduces the absolute \(t\)-statistics and the number of locations crossing the uncorrected threshold. WM and Language maps show an asymmetric overlap pattern in participant 103414, but the spatial comparison has no completed spin-test inference and is based on one participant.
+
+    \item \textbf{Visual ROIs contain reproducible information about WM stimulus category.} The split-run identification results and the cross-subject category decoder both show the clearest category information in EVC and occipitotemporal regions. The early auditory ROI is near chance for visual category decoding, which is consistent with its role as a comparison region.
+
+    \item \textbf{Higher load may affect category information, but the evidence is not uniform.} Some visual ROI accuracies are lower at 2-back than at 0-back, and OT\_lateral shows a positive within-load versus cross-load difference. However, not every ROI shows the same pattern, and the targeted RSA correlations vary substantially across participants. The current data do not establish that category geometry is invariant or that it is systematically disrupted by load.
+
+    \item \textbf{Load information is most clearly decodable in parietal frontoparietal cortex.} FP\_parietal load decoding reaches 0.725 accuracy with \(q=0.004\). EVC also shows load information (0.650, \(q=0.042\)), suggesting that load-correlated changes are present in visual patterns as well. Story-versus-Math decoding is high in several auditory and frontoparietal regions, but this contrast may reflect multiple differences between the task conditions.
+\end{enumerate}
+
+A cautious working interpretation is that occipitotemporal regions carry information distinguishing the visual categories, while frontoparietal regions carry information distinguishing the WM load. This is broadly consistent with the functional roles of these regions, but it is not a strict double dissociation: EVC also decodes load, and some category information appears outside occipitotemporal cortex.
+
+\section{Limitations and checks before making stronger claims}
+
+\begin{enumerate}
+    \item \textbf{Only five participants.} This is the largest limitation. Subject-level estimates and confidence intervals are unstable, and results may not generalise to the wider population.
+    \item \textbf{Uncorrected GLM threshold.} The threshold \(t=3.1\) used for the map counts is uncorrected. It should not be described as a corrected significance threshold.
+    \item \textbf{One-participant cross-task map comparison.} The revised GLM overlap and lateralisation analysis is for participant 103414. It is not a group-level result.
+    \item \textbf{No completed spin test.} The cortical sphere files were missing, so the planned spatially constrained null comparison was not performed.
+    \item \textbf{RDMs have few condition pairs.} The targeted four-category RDM correlation uses only six pairwise distances per participant. This makes each correlation sensitive to individual pairs and noise.
+    \item \textbf{Crossnobis distances can be negative.} Negative values are possible for an unbiased cross-validated estimator and should not be interpreted as literal negative distances.
+    \item \textbf{Decoding significance is not mechanism.} A classifier can exploit any systematic difference between labels, including nuisance or task-context differences. Decoding does not identify the neural mechanism or prove a cognitive interpretation.
+    \item \textbf{Language contrast is not a pure language-specific test.} Story and Math differ in more than one dimension. High decoding means the conditions are distinguishable, not that a region is exclusively responsible for language.
+    \item \textbf{Permutation count.} The decoding tables use 1,000 permutations. For final reporting, a larger number such as 5,000 or more would give finer resolution for small \(p\)-values.
+    \item \textbf{Older notebook summaries disagree.} Some earlier cells report different values for AR(1)/OLS ratios, WM activation counts, and run correlations than the revised cross-task cell. The revised cell should be treated as the current GLM summary, and older conflicting numbers should not be mixed into the final results.
+    \item \textbf{An apparent numerical inconsistency in an earlier GLM printout.} One earlier cell prints an AR(1)/OLS mean absolute \(t\)-ratio of 1.3806 while describing prewhitening as reducing inflation. This conflicts with the explicit OLS-versus-AR(1) means in the earlier comparison, where AR(1) is lower. The ratio line should be checked or corrected before reusing that output.
+\end{enumerate}
+
+\end{document}
