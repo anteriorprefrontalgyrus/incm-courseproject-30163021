@@ -1,0 +1,458 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{unicode-math}
+\setmainfont{STIX Two Text}
+\setmathfont{STIX Two Math}
+\usepackage{cite}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs,array}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+
+% Number of participants in the current analyses (update when more subjects are added)
+\newcommand{\Nsub}{8}
+
+\begin{document}
+
+\title{Category and Load Effects in HCP Working Memory and Language Task-fMRI: \\ A Pattern-Based Model of Task Demands}
+
+\author{\IEEEauthorblockN{1\textsuperscript{st} Sai Veeksha Tavva}
+\IEEEauthorblockA{\textit{IIT Hyderabad} \\
+Roll No.\ 2024113021}
+\and
+\IEEEauthorblockN{2\textsuperscript{nd} Sahishnu Pawan Kumar}
+\IEEEauthorblockA{\textit{IIIT Hyderabad} \\
+Roll No.\ 2024113016}
+}
+
+\maketitle
+
+\begin{abstract}
+Working-memory tasks impose a domain-general demand (memory load) and a content-specific demand (what is held). We model how multivoxel task-fMRI patterns from the Human Connectome Project organise these two demands, using a two-stage encoding and representational model, own implementations of the GLM, cross-validated RSA and decoding, a resting-state null, and a visual-to-auditory demand-transfer test. In eight participants, category was reproducibly and decodably represented in early visual and occipito-temporal cortex (cross-run identification $0.82$--$0.87$ at 0-back) and, less securely, in parietal cortex; it was largely, but not demonstrably fully, preserved across load (decoding loss $0.09$--$0.16$ in visual ROIs; no equivalence test passed after correction). Load was decodable in seven of eight ROIs ($0.64$--$0.77$) and survived removal of the ROI mean in frontoparietal and auditory-association cortex. A load decoder trained on the visual task separated Math from Story in frontoparietal, cingulate and auditory-association cortex, and the cross-run correlation of the two demand patterns was largest in parietal cortex ($r=0.43$). The resting-state null covers one participant, so the results are a pilot.
+\end{abstract}
+
+\begin{IEEEkeywords}
+working memory, task fMRI, representational similarity analysis, decoding, representational geometry
+\end{IEEEkeywords}
+
+\section{Aim of the Modelling Exercise}
+\label{sec:aim}
+
+The aim is to build and test a quantitative, pattern-based model of how the brain's response to a working-memory (WM) task is organised by two kinds of demand: a domain-general demand set by memory \emph{load}, and a content-specific demand set by the \emph{category} of what is held (faces, places, tools, body parts). Using Human Connectome Project (HCP) task-fMRI, we ask which regions carry which kind of information and whether the code for one survives a change in the other.
+
+\textbf{Research question.} Do multivoxel activity patterns differ between stimulus categories, and does this category information persist when load rises from 0-back to 2-back? Is the load-related signal shared between a visual task (N-back) and an auditory task (Language: Math versus Story)?
+
+We test four hypotheses, each with a pre-specified analysis and null:
+\begin{itemize}
+\item \textbf{H1 (category patterns).} Each category evokes a distinct, reproducible pattern in occipito-temporal (OT) cortex, distributed rather than carried only by the most selective voxels.
+\item \textbf{H2 (dissociation, invariance).} Load is carried mainly by dorsal frontoparietal and cingulate regions and category by OT cortex; the category code is preserved across loads, so a category decoder transfers across load.
+\item \textbf{H3 (control).} Both effects exceed a null built from resting-state fMRI (rfMRI) analysed with the same pipeline.
+\item \textbf{H4 (modality-general demand).} A 2-back versus 0-back pattern learned in vision transfers to Math versus Story in frontoparietal cortex, but not in sensory cortex.
+\end{itemize}
+
+\textbf{Scope.} The analyses use \Nsub{} HCP participants, two runs each (LR and RL), and eight bilateral ROIs from the Glasser parcellation. At this pilot scale, inference uses permutation and sign-flip tests with the participant as the unit, and results are reported with effect sizes and intervals.
+
+\section{Introduction and Motivation}
+\label{sec:intro}
+
+\subsection{Empirical motivation}
+The HCP WM task is an N-back task with faces, places, tools and body parts in separate blocks, half at 0-back (respond to a fixed target) and half at 2-back (respond when the item matches the one two steps earlier) \cite{vanessen2013,barch2013}. Its activations are reliable across subjects and sessions \cite{drobyshevsky2006,barch2013}. Collapsing over category, 2-back versus 0-back engages dorsal frontoparietal and cingulate regions, consistent with a multiple-demand system serving many cognitive demands \cite{duncan2010}. Collapsing over load, category contrasts recover face-, place- and body-selective OT regions, while tools show no consistent selectivity \cite{barch2013,kanwisher1997,epstein1998,downing2001}. Three questions remain open.
+
+\emph{(i) Where is category information and how is it coded?} Univariate maps test average response. Haxby \emph{et al.}\ \cite{haxby2001} showed that the pattern across ventral temporal voxels identifies the viewed category even after the most selective voxels are removed, favouring a distributed code, but in six subjects and a one-back task. Whether HCP WM data show the same, and where, needs pattern analysis such as RSA \cite{kriegeskorte2008}.
+
+\emph{(ii) What does load do to the category code?} A larger frontoparietal response at 2-back could reflect gain control, non-specific attention or content maintenance, which a univariate contrast cannot separate. The fidelity of remembered content in sensory cortex depends on how much is held \cite{emrich2013}, so load might sharpen, compress or distort the representational geometry (pairwise distances between category patterns), or change only its scale. Average activation cannot distinguish these. The logic of testing whether a code is shared across conditions comes from the representational-geometry literature \cite{kriegeskorte2013,bernardi2020}.
+
+\emph{(iii) Is the demand signal specific to vision?} The HCP Language task contrasts story comprehension with arithmetic (Math) in the auditory modality \cite{binder2011}. If frontoparietal cortex carries a modality-general demand signal, a pattern separating 2-back from 0-back should also separate Math from Story, while sensory regions should not. We claim no novelty for the individual methods; the contribution is their combination on one dataset, with controls.
+
+\subsection{The model and the variations introduced}
+We use a two-stage model. \textbf{Stage 1 (encoding):} at each grayordinate the time series is a linear, time-invariant response to the block design,
+\begin{equation}
+y(t)=\sum_{k}\beta_k\,(s_k\ast h)(t)+\text{drift}(t)+\text{motion}(t)+\varepsilon(t),
+\label{eq:glm}
+\end{equation}
+with $\varepsilon_t=\rho\,\varepsilon_{t-1}+u_t$. Here $s_k$ indicates condition $k$ (eight WM conditions: four categories $\times$ two loads; two Language conditions) and $h$ is a double-gamma haemodynamic response function (HRF). The estimates $\beta_k$ (or $t$-values) across an ROI form the pattern $\mathbf{p}_k$.
+
+\textbf{Stage 2 (representational):} the pattern for category $c$ at load $l$ is a shared category code scaled by a load-dependent gain, plus a load offset and noise,
+\begin{equation}
+\mathbf{p}_{c,l}=\mathbf{m}_l+g_l\,\mathbf{s}_c+\boldsymbol{\eta}_{c,l}.
+\label{eq:rep}
+\end{equation}
+Then $g_2<g_0$ means load weakens the code, $g_2=g_0$ with the same $\mathbf{s}_c$ means invariance, and a change in $\mathbf{m}_l$ alone is a pure load effect. Cross-validated distances between condition patterns are the observables: within-load category distances reflect the gain, and category distinctness surviving the load change reflects the shared code (derivation in Methods).
+
+We take the standard workflow (GLM, RDMs from beta maps, linear decoder; the Neuromatch HCP exercise) as the \emph{baseline} and reproduce it. Table~\ref{tab:variations} lists our variations; every figure is tagged baseline or extension.
+
+\begin{table*}[t]
+\caption{Variations introduced relative to the baseline pipeline.}
+\label{tab:variations}
+\centering\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}p{0.5cm}p{3.6cm}p{6.6cm}p{5.6cm}@{}}
+\toprule
+ & \textbf{Baseline} & \textbf{Our variation} & \textbf{Motivation}\\
+\midrule
+V1 & Library GLM, default settings. & Own design matrix: double-gamma HRF at TR $=0.72$\,s, drift and motion terms; OLS compared with AR(1) prewhitening. & Serial correlation in residuals inflates $t$-statistics if ignored \cite{woolrich2001}.\\
+V2 & RDM from correlation of beta maps. & Own NumPy RSA with cross-run (LR/RL) cross-validated distances; a library used only as a cross-check. & Cross-validated distances have expected value zero without a reproducible difference and are more reliable \cite{walther2016,nili2014}.\\
+V3 & Compare load RDMs with one rank correlation over six category pairs. & Full $8\times8$ RDM: a \emph{transfer} term (shared code across loads), a \emph{gain} term (2-back relative to 0-back distinctness) and an equivalence (TOST) test with a margin fixed beforehand. & Six pairs make a rank correlation unstable; a non-significant difference is not evidence of invariance.\\
+V4 & Chance level as the only reference. & Matched rfMRI null: same design and pipeline on random 405-frame windows of the same subjects' resting data. & Rest data keep the real autocorrelation and spatial structure of the signal.\\
+V5 & Within-task decoding. & Leave-one-subject-out decoding of category and load, cross-load train/test, cross-task decoding (WM load vs.\ Math/Story) and a demand-axis correlation across different runs. & Tests modality-general demand (H4) directly rather than from separate univariate maps \cite{duncan2010}.\\
+V6 & Accuracy and significance taken at face value. & Controls: ROI mean removed \cite{coutanche2013}; shared event timing; fold-local scaling; participant-level sign-flip inference; confirmatory family fixed in advance with FDR \cite{stelzer2013,nichols2002}. & A decoder uses any reliable label difference, including nuisance structure \cite{haynes2006}; many tests inflate false positives.\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Difference from the class models}
+The class models (passive membrane, leaky integrate-and-fire, Hodgkin--Huxley, synapse and dendrite models, FitzHugh--Nagumo) are \emph{mechanistic}: differential equations for membrane potential and gating variables, integrated in time for one neuron or a small circuit and compared with simulated voltage or spikes. Ours is \emph{descriptive and representational}. Its latent quantities are pattern vectors and gains; its observable is the haemodynamic signal at 91{,}282 grayordinates, sampled every 0.72\,s; its dynamics are a linear HRF convolution with AR(1) noise, followed by a static representational stage; its parameters are HRF shape, drift and motion terms, $\rho$, gains, transfer and decoder regularisation; and it is evaluated by cross-validation across runs and subjects, permutation and rfMRI nulls, and equivalence tests rather than by integrating equations.
+
+The two share mathematics. The passive membrane is a linear first-order low-pass filter that turns a current step into a delayed, smoothed voltage; the HRF in \eqref{eq:glm} likewise turns a block of neural activity into a delayed, smoothed haemodynamic response with an undershoot, and in both the response follows from convolving the input with the impulse response. A linear read-out of a population is also what a linear classifier does on ROI patterns.
+
+\textbf{Not done.} We do not simulate spiking or synaptic dynamics. A biophysical model of activity-silent maintenance (short-term synaptic plasticity) was removed from scope after feedback and appears only as future work. Our claims concern information in measured patterns and its dependence on load and modality, not the cellular mechanism.
+
+\section{Methods}
+\label{sec:methods}
+
+All analyses were run in Python (NumPy, SciPy, scikit-learn) in a single Jupyter notebook; the GLM, the representational analysis and the permutation tests are our own implementations, and no neuroimaging toolbox is used for inference. Random seeds are fixed throughout.
+
+\subsection{Data and participants}
+We used \Nsub{} unrelated participants from the HCP 1200-subject release \cite{vanessen2013}. Each has two runs (LR and RL phase encoding) of the WM and Language tasks \cite{barch2013,binder2011}, and one participant so far has resting-state runs. Data are the HCP minimally pre-processed CIFTI dense time series on the 32k surface plus subcortical grid (91{,}282 grayordinates), MSMAll-aligned \cite{robinson2014} and cleaned with ICA-FIX \cite{salimi2014}. The WM run has 405 frames and the Language run 316, at $\mathrm{TR}=0.72$\,s (the value of 1.0\,s written in the CIFTI header is wrong and is overridden). No smoothing beyond that in the released data was applied. Block onsets and durations come from the HCP EV files, and the run-wise motion parameters from the released \texttt{Movement\_Regressors}.
+
+\textbf{Tasks.} The WM task has eight block types: four categories (faces, places, tools, body parts) at two loads (0-back, 2-back). The Language task has two block types, Story and Math. Condition names were mapped from EV file names, and the mapping was checked against the number of blocks per condition per run.
+
+\subsection{Stage-1 model: GLM with AR(1) prewhitening}
+For every run separately we fitted \eqref{eq:glm} at every grayordinate. The design matrix contains one regressor per condition (eight for WM, two for Language), each built by convolving a boxcar for the block with a double-gamma HRF sampled at the TR, plus the 12 motion regressors (six parameters and their first derivatives), a discrete cosine basis for high-pass filtering with a 128\,s cut-off, and an intercept. Regressors were not orthogonalised.
+
+Serial correlation was handled by prewhitening \cite{woolrich2001}. We first fitted ordinary least squares, estimated the lag-1 autocorrelation $\rho$ of the residuals at each grayordinate, and binned $\rho$ in steps of 0.005. For each bin we built one whitening matrix from the AR(1) form, whitened the data and design, and refitted by least squares. This gives one fit per bin rather than one per grayordinate, at negligible loss of precision. The outputs are the $\beta$ estimates and $t$-values for each condition against the implicit baseline. The two runs were never merged in the cross-run analyses (LR is used for one half, RL for the other); for the exploratory first-level maps they were combined by inverse-variance fixed effects.
+
+\subsection{Regions of interest}
+Eight bilateral ROIs were assembled from Glasser multimodal parcels \cite{glasser2016} (grayordinate counts in brackets): early visual cortex (EVC; V1--V3; 3{,}632), ventral occipito-temporal (OT\textsubscript{ventral}; FFC, VVC, PIT, V8, VMV1--3, PHA1--3; 1{,}850), lateral occipito-temporal (OT\textsubscript{lateral}; LO1--3, V4t, PH; 788), early auditory (A1, LBelt, MBelt, PBelt, RI; 1{,}187), auditory association (A4, A5, STSdp, STSda, STSvp, STSva, STGa, TA2; 2{,}274), dorsolateral frontoparietal (FP\textsubscript{dlpfc}; 46, p9-46v, a9-46v, 9-46d, 8C, 8Av, 8Ad, FEF, IFJp; 3{,}318), parietal (FP\textsubscript{parietal}; IP1, IP2, IP0, IPS1, LIPd, LIPv, VIP, MIP, 7PL; 2{,}460) and cingulate/pre-SMA (SCEF, 6ma, 24dd, p32pr; 1{,}547). ROI definitions are fixed before any decoding and are the same for all participants. Sizes differ by a factor of about four, so accuracy is compared across ROIs with this in mind, and ROI-specific nulls are used rather than a common chance level.
+
+\subsection{Split-half representational similarity}
+\label{sec:rsa}
+For each participant and ROI, the $t$-maps of the eight WM conditions from LR and RL form two pattern matrices $A,B\in\mathbb{R}^{8\times V}$. Grayordinates with zero variance in either run were dropped.
+
+\textbf{Reproducibility.} Cross-run \emph{identification}: for each condition the LR pattern is correlated with every RL pattern, and the condition is identified correctly when its own RL pattern correlates highest. Patterns are first centred across the four categories separately within each load (removing the shared task pattern and the load main effect) and then correlated; the results below use \emph{pairwise} identification (own pattern more correlated than each competitor, averaged over competitors and both directions; chance 0.5), and \emph{cross-load} identification uses 0-back patterns from one run against 2-back patterns from the other. For eight-way identification chance would be $1/8$. This is a within-subject test that needs no classifier.
+
+\textbf{Cross-validated distances.} Distances between conditions $i,j$ are the cross-validated (crossnobis-style) estimate \cite{walther2016,nili2014}
+\begin{equation}
+d_{ij}=\tfrac{1}{V}\,(\mathbf{a}_i-\mathbf{a}_j)^{\!\top}(\mathbf{b}_i-\mathbf{b}_j),
+\end{equation}
+symmetrised over the two run assignments. Noise in the two runs is independent, so $\mathbb{E}[d_{ij}]=0$ when two conditions have the same underlying pattern, and negative values are retained. Spatial whitening is not applied (the pre-whitened $t$-maps are used), which we note as a limitation. The $8\times8$ matrix is split into the 0-back block, the 2-back block and the cross-load block. The implementation passes unit tests for symmetry, a zero diagonal, positive mean distance for simulated signal and near-zero mean for noise.
+
+\textbf{Distributed code (voxel removal).} Following Haxby \emph{et al.}\ \cite{haxby2001}, grayordinates were ranked by a one-way $F$ statistic across the four categories, computed in one run only. The top $k\%$ were removed in the \emph{other} run, and identification was recomputed from the remainder. Because removing any grayordinates lowers accuracy, the \emph{excess} loss was compared with removing the same number of randomly selected grayordinates (several random draws). Random removal used 100 draws per participant and ROI, and removal fractions were 0, 10, 20, 30, 50 and 70\,\% (excess drops are reported at 30 and 50\,\%). A category code that survives removal of its most selective units, and loses no more than random removal would, is described as distributed.
+
+\textbf{Language reliability.} Because Language has only two conditions, no RDM is possible; we report the cross-run (LR versus RL) correlation of the Math\,$-$\,Story contrast pattern, and use it as the reliability of the Language pattern in the demand analysis of Section~\ref{sec:demand}.
+
+\subsection{Leave-one-subject-out decoding}
+\label{sec:decoding}
+Decoding was done leave-one-subject-out (LOSO): a classifier is trained on all other participants and tested on the held-out participant, so generalisation is across brains rather than across runs. Features are the ROI pattern of one block (a $t$-map from a single block) with the participant-wise mean across features not removed unless stated. Targets are category (four classes, chance 0.25), load (two classes, chance 0.5), and Math versus Story (chance 0.5).
+
+\textbf{Classifier.} A ridge classifier in dual form with $\lambda=\lambda_{\mathrm{rel}}\,\mathrm{tr}(K)/n$, $\lambda_{\mathrm{rel}}=1$, where $K=XX^{\top}$ is the training Gram matrix; the dual form is used because $V\gg n$. Multi-class problems use one-versus-rest coding. Feature scaling is fitted on the training participants only (fold-local) and applied to the test participant. A linear SVM (\texttt{LinearSVC}, $C=1$, standardised features, fold-local scaling) was run as a cross-check on the same folds to show that conclusions do not rest on the ridge form.
+
+\textbf{Cross-load decoding.} To ask whether the category code is load-invariant at the decoder level, training used one load and testing the other, in both directions, and the result was compared with within-load accuracy.
+
+\textbf{Permutation null.} Labels were permuted $N_{\mathrm{perm}}=1000$ times \emph{within block structure} (category labels shuffled among blocks of the same load and run, load labels among blocks of the same category), so that the null preserves the number of blocks per cell and the run structure. Each permutation reruns the complete LOSO procedure. $p=(1+\#\{\text{null}\ge\text{obs}\})/(N_{\mathrm{perm}}+1)$. Group accuracy is the mean over held-out participants. Bootstrap confidence intervals (10{,}000 resamples) resample \emph{participants}, never blocks.
+
+\subsection{Pattern versus amplitude}
+\label{sec:amp}
+A multivoxel decoder can exploit differences in the \emph{ROI mean} (an amplitude effect) rather than differences in the spatial pattern \cite{coutanche2013}. The load decoding and the cross-task decoders were therefore repeated after subtracting, within each ROI and block, the mean across grayordinates (pattern only; permutation $p$ for the load analysis used 300 permutations), and decoded from the ROI mean alone, one feature per block (cross-task only). A variant that also divides by the standard deviation across grayordinates is defined in the revised notebook but was not run on these data. A region is described as carrying \emph{pattern} information when accuracy survives mean removal, and as \emph{amplitude-driven} when mean-only decoding matches full decoding and pattern-only is at chance. The difference between full and mean-removed accuracy is reported as point values.
+
+\subsection{Load invariance of the category code (H1/H2 model)}
+\label{sec:h1}
+This is the analysis that operationalises \eqref{eq:rep} on the $8\times8$ cross-run RDM $D$ with entries $d_{(c,l),(c',l')}$ (categories $c,c'$, loads $l,l'$). For each participant and ROI we compute three scalars.
+
+\emph{Within-load distinctness} $\bar d_l$ is the mean of the six off-diagonal category distances within load $l$. \emph{Transfer} is the mean of the cross-load, cross-category distances (e.g.\ face at 0-back versus place at 2-back) minus the mean cross-load, same-category distances (face at 0-back versus face at 2-back); it is positive when categories remain distinguishable across load, i.e.\ when the same code $\mathbf{s}_c$ operates at both loads, and zero when the code is not shared. This numerator is divided by the mean within-load distinctness, $(\bar d_0+\bar d_2)/2$ (\emph{normalised transfer}: 1 means the same code at both loads, 0 means none). Dividing each participant's numerator by that participant's own denominator is unstable when the denominator is near zero, so in the group analysis every participant's numerator is divided by the \emph{group-mean} within-load distinctness instead. \emph{Gain} is $\bar d_2/\bar d_0$: in the model $d\propto g_l^2$, so a ratio below 1 means that load weakens the code. Gain is formed per participant and is undefined (flagged, not silently dropped) where $\bar d_0\le0$; it is unstable when $\bar d_0$ is near zero.
+
+\textbf{Interpretability gate.} A transfer or gain is interpreted only when within-load distinctness is reliably above zero in that ROI (the participant bootstrap interval of the group mean lies above zero), because the ratios are not meaningful where there is no category information to preserve. The original statistic of Section~\ref{sec:failed}, the Spearman correlation $\rho$ between the two six-pair sub-RDMs, is still computed for comparison only.
+
+\textbf{Null.} Condition labels cannot be shuffled freely because the design has structure. We permuted the pairing between categories at 2-back and categories at 0-back (the $4!=24$ relabelings, one of which is the identity). In each of 5000 draws every participant's 2-back categories were relabelled independently by one of the 24 permutations, the group-mean transfer was recomputed, and $p=(1+\#\{\text{null}\ge\text{obs}\})/5001$. This tests whether the category correspondence between loads is non-random in the group; it does not test generalisation to new participants, so it is read together with the bootstrap interval and the participant-level tests below.
+
+\textbf{Equivalence (TOST).} Failing to reject a difference is not evidence of equality. For the claim of invariance we ran two one-sided tests \cite{schuirmann1987} across participants, with equivalence margins fixed before looking at the results: $\pm0.25$ for pooled-normalised transfer and $\pm0.10$ for the decoding-accuracy loss across load. The TOST uses $t$ distributions on the participant-level values. Invariance is claimed only when both one-sided p-values are below $0.05$ (after FDR over ROIs), and we additionally report the smallest margin $m_{\min}$ at which equivalence would hold (the larger absolute end of the 90\,\% interval), so that the reader can judge the result against a stricter or looser margin.
+
+\subsection{Matched resting-state null}
+\label{sec:rest}
+A pipeline can produce non-zero decoding, transfer or gain even on data with no task, because of the temporal and spatial structure of the signal. To obtain a null with the \emph{same} structure, we drew random windows of 405 consecutive frames from the participant's cleaned resting-state runs, imposed the participant's real WM design on each window, and ran the identical pipeline (GLM, RDM, H1 statistics). Repeating this gives a null distribution for every statistic in Sections~\ref{sec:rsa}--\ref{sec:h1}; the observed statistic is compared with the empirical distribution (one-sided, $p=(1+\#\ge)/(n+1)$) and with the participant-level mean. Resting data are currently available for one participant, so the null is reported for that participant and is not yet used for group inference.
+
+\subsection{Cross-task decoding and the shared demand axis}
+\label{sec:demand}
+\textbf{Cross-task decoder.} H4 asks whether a pattern that separates 2-back from 0-back in the visual WM task also separates Math from Story in the auditory Language task. In direction A a ridge classifier is trained on WM load (0-back versus 2-back) in the other participants and applied to the held-out participant's Language blocks; in direction B it is trained on Language (Story versus Math) and tested on WM load. The mapping Math $\leftrightarrow$ 2-back is fixed before the analysis (Math is the more demanding condition); accuracy below 0.5 would mean that the mapping is reversed. The analysis was repeated for the full pattern, the ROI-mean-removed pattern and the ROI mean alone, and each is judged separately, so that a result that transfers only through the mean is not reported as shared pattern information.
+
+\textbf{Inference.} The participant is the unit. Each participant's accuracy $a$ is treated as exchangeable with $1-a$ under the null, and the group mean is compared with the $2^n$ sign-flipped means (exact for $n\le14$). The smallest attainable two-sided $p$ is $2/2^n$, i.e.\ $0.0078$ at $n=8$. P-values are corrected by Benjamini--Hochberg FDR \cite{benjamini1995} across ROIs and directions. We also report the number of participants above 0.5, since a mean driven by two participants is not a group effect.
+
+\textbf{Demand-axis correlation.} For each ROI we form the demand pattern (2-back minus 0-back, averaged over categories) and the Language pattern (Math minus Story) from independent runs, and correlate them (Pearson, which removes each ROI's mean) across grayordinates between different runs (LR of one task with RL of the other and vice versa, averaged), which removes the shared-noise correlation within one run. The correlation is compared with the within-task cross-run correlations of each pattern, and a reliability-corrected value (dividing by the geometric mean of the two within-task LR/RL reliabilities, an attenuation correction) is reported only where both reliabilities exceed 0.2, because the correction diverges for near-zero reliabilities. Participant-level significance uses the sign-flip test.
+
+\textbf{Mantel test and noise ceiling.} To compare the representational structure of the $4\times4$ category RDMs between the two loads we use a Mantel test (5{,}000 joint permutations of the category labels on both axes of one RDM) with Spearman and Kendall rank correlations \cite{mantel1967}; confidence intervals resample participants. A descriptive noise ceiling is obtained, per ROI and load, by correlating each participant's RDM with the mean RDM of the others (lower bound) and with the mean including the participant (upper bound); it is reported only with at least three participants.
+
+\subsection{Event-timing audit}
+\label{sec:timing}
+Cross-participant decoding can be inflated when the stimulus schedule is shared across participants, because anything locked to the schedule (scanner drift, respiratory or cardiac phase, low-frequency fluctuations common to the group) then becomes a predictor of the label. For every participant and run we extracted block onsets and compared them across participants, calling two schedules ``shared'' when all onsets agree within 0.5\,s. For each task we report the number of distinct schedules, the largest onset difference, and a verdict. Where schedules are shared, a leave-one-category-out check and the ROI-mean-removed analysis of Section~\ref{sec:amp} are intended to judge whether an effect depends on the schedule; only the second has been run on these data. The audit tolerance of the first notebook run was 0.01\,s, which flags every participant, so the 0.5\,s criterion is applied to the printed onset differences. In our data the WM schedule is shared within about 0.32\,s across participants, while the Language schedule differs between participants; consequently, label effects that are specific to one category and a fixed position in the schedule (places, in particular) are interpreted cautiously.
+
+\subsection{Statistical inference}
+Throughout, the participant is the unit of replication. Group statistics are either sign-flip tests (for statistics that are symmetric around a null value; exact enumeration of the $2^n$ flips for the cross-task decoders, and a Monte Carlo approximation with 10{,}000 random sign assignments for the RSA, loss, removal and demand-axis statistics), label-permutation tests that re-run the complete pipeline, or participant bootstrap intervals; none treats blocks or grayordinates as independent. Multiple comparisons are controlled by Benjamini--Hochberg FDR \cite{benjamini1995} within families that are fixed before the analysis (the confirmatory family is the set of ROI $\times$ target tests for H1--H4; anything else is exploratory and labelled so). With $n=8$ the exact sign-flip test has a smallest p-value of $0.0078$ (two-sided), so the results are interpreted through effect sizes and intervals as much as p-values, and a result that rests on the smallest attainable p-value is flagged.
+
+\subsection{Approaches tried and abandoned}
+\label{sec:failed}
+Two analyses that we implemented did not hold up and were replaced; we report them to explain choices made above.
+
+\textbf{(1) A six-pair rank-correlation statistic for invariance.} The first version of H1 compared the 0-back and 2-back category RDMs by a single Spearman correlation over their $\binom{4}{2}=6$ off-diagonal entries, as is common in the RSA literature \cite{kriegeskorte2008,nili2014}. With six pairs the statistic takes few distinct values and is dominated by ties and a single misordered pair, so it is highly variable even under the null: in the one resting-state participant processed with the matched null of Section~\ref{sec:rest}, the null distribution of $\rho$ was very wide (standard deviation about 0.46), and the BH-adjusted $q$ for that participant was $\approx0.996$, i.e.\ the statistic could not separate signal from the null. It also cannot express equivalence: a non-significant correlation is not evidence of a shared code, and a high one does not rule out a change of scale. We replaced it by the full $8\times8$ model with separate transfer and gain terms, the permutation reference, and the TOST of Section~\ref{sec:h1}. The Mantel/Spearman comparison of Section~\ref{sec:demand} is kept only as a descriptive companion.
+
+\textbf{(2) A block-level label-flip null for cross-task decoding.} We first assessed cross-task decoding by permuting (flipping) the labels of individual test blocks. The Story-versus-Math pattern is nearly identical across participants, and the test blocks of one participant (and of different participants, where the schedule is shared) are not independent samples, so the null was far too narrow and returned $p$-values that were too small even for effects we could not otherwise support, an anti-conservative test. We replaced it by the participant-level exact sign-flip test of Section~\ref{sec:demand}, accepting that its smallest p is $2/2^n$. A related bug found at the same stage, in which a verdict rule declared ``no transfer'' whenever the full-pattern accuracy was below 0.6 even though the pattern-only decoder transferred, was fixed by judging the pattern-only and mean-only decoders separately.
+
+\subsection{Limitations of the methods}
+Four checks are not yet done or not yet run: a leave-one-category-out decoding and a resting-state control for the decoders (both defined in the revised notebook), a spatial (spin) permutation test that would keep the cortical autocorrelation when relating ROI maps (it needs the sphere files), and the resting-state null for all participants. With $n=\Nsub$ the analyses are best read as a pilot, and no formal power calculation was performed. The ROI definitions come from a group-based parcellation, and the largest ROIs contain about four times as many grayordinates as the smallest, so ROI comparisons are descriptive.
+
+\section{Results}
+\label{sec:results}
+
+All values come from the \Nsub{}-participant run of the analysis notebook. Group statistics treat the participant as the unit; ``$q$'' is a Benjamini--Hochberg adjusted $p$ within the family stated in each table caption, and bold type in the tables marks $q<0.05$. With $n=8$ the smallest two-sided sign-flip $p$ is $0.0078$, and several of the results below sit at that floor; they are flagged as such. The $p$ values of tests that use random sign assignments (Monte Carlo, 10{,}000 draws) are approximations of the exact values.
+
+\subsection{Preliminary checks}
+\label{sec:res-prelim}
+\textbf{First-level maps (one participant, descriptive).} For participant 103414 (LR and RL combined by fixed effects, uncorrected $|t|\ge3.1$), 2-back $>$ 0-back had 2{,}331 positive (2.55\,\%) and 1{,}090 negative (1.19\,\%) grayordinates, and Story $>$ Math had 3{,}229 positive (3.54\,\%) and 6{,}970 negative (7.64\,\%; these are Math $>$ Story). The run-to-run reproducibility of the unthresholded $t$-maps (LR versus RL) was $r=0.342$ for WM and $r=0.544$ for Language. Across all 91{,}282 grayordinates the WM 2-back $>$ 0-back map and the Story $>$ Math map correlated at $r=-0.390$ (Spearman $\rho=-0.305$; no $p$ value is given because grayordinates are not independent), i.e.\ the 2-back pattern resembles Math $>$ Story. Consistently, 1{,}330 grayordinates were positive for both 2-back $>$ 0-back and Math $>$ Story, against 178.0 expected by chance (7.5$\times$), and 291 were negative for 2-back $>$ 0-back and positive for Story $>$ Math, against 38.6 expected (7.5$\times$); the pair 2-back and Story had 5 against 82.5 expected. No spatial permutation test was run, so these overlaps are descriptive. They support the mapping Math $\leftrightarrow$ 2-back used in Section~\ref{sec:demand}.
+
+\textbf{Event timing.} Applying the 0.5\,s criterion of Section~\ref{sec:timing} to the audit, WM onsets of every participant, condition and run agreed with the reference participant to within 0.321\,s, so the WM schedule is shared by all participants. Language onsets did not: every participant differed from the reference in both runs (onset differences of up to 36.7\,s in LR and between 0.07 and 4.0\,s in RL), and in LR five of seven participants had a different number of Math blocks. Within the shared WM schedule, label and block-onset time were correlated: places $+0.61$ (LR) and $+0.51$ (RL); tools $-0.51$ and $+0.15$; body $-0.25$ and $-0.51$; faces $+0.15$ and $-0.15$; load $-0.31$ and $0.00$ (reference participant). For Language, Math had a correlation of $+0.21$ (LR) and $+0.45$ (RL) with onset time. Places is therefore confounded with time in the same direction in both runs, which matters for the interpretation of category decoding (Section~\ref{sec:disc-limits}).
+
+\subsection{H1: reproducible, distributed category patterns}
+\label{sec:res-h1}
+\begin{table*}[t]
+\caption{Cross-run reproducibility of the category and Math--Story patterns ($n=8$). Identification columns: pairwise accuracy (chance 0.5), group mean (BH $q$ in brackets; 24 tests). Story--Math: mean LR/RL correlation of the Math$-$Story pattern with 95\% participant bootstrap interval (all $q\le0.015$). Last column: excess accuracy drop at 50\% removal of the most selective grayordinates relative to random removal, 0-back identification (participants with positive excess). Bold: $q<0.05$. The Story--Math values are a reliability, not a test of category information.}
+\label{tab:rsa}
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+ROI & ID 0-back & ID 2-back & ID cross-load & Story--Math $r$ & Excess drop at 50\% \\
+\midrule
+EVC & \textbf{0.823} (0.032) & 0.724 (0.064) & \textbf{0.781} (0.032) & \textbf{0.466} [0.26, 0.60] & \textbf{+0.112} (8/8) \\
+OT$_\mathrm{ventral}$ & \textbf{0.818} (0.032) & 0.688 (0.090) & \textbf{0.880} (0.032) & \textbf{0.349} [0.25, 0.43] & \textbf{+0.137} (8/8) \\
+OT$_\mathrm{lateral}$ & \textbf{0.870} (0.032) & 0.708 (0.064) & \textbf{0.797} (0.032) & \textbf{0.598} [0.49, 0.71] & \textbf{+0.170} (8/8) \\
+AUD$_\mathrm{early}$ & 0.510 (0.995) & 0.438 (0.486) & 0.516 (0.934) & \textbf{0.436} [0.34, 0.54] & -0.000 (4/8) \\
+AUD$_\mathrm{assoc}$ & 0.615 (0.294) & 0.479 (0.934) & 0.646 (0.283) & \textbf{0.719} [0.66, 0.77] & +0.054 (6/8) \\
+FP$_\mathrm{dlpfc}$ & 0.609 (0.305) & 0.578 (0.294) & 0.510 (0.995) & \textbf{0.742} [0.67, 0.80] & +0.017 (5/8) \\
+FP$_\mathrm{parietal}$ & 0.641 (0.187) & 0.609 (0.305) & 0.573 (0.513) & \textbf{0.768} [0.73, 0.81] & \textbf{+0.118} (8/8) \\
+Cing/pre-SMA & 0.495 (1.000) & 0.505 (0.995) & 0.620 (0.237) & \textbf{0.566} [0.47, 0.65] & +0.018 (4/8) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+Cross-run pairwise identification (chance 0.5; Table~\ref{tab:rsa}) was reliably above chance in EVC and both OT regions. At 0-back it was $0.823$ in EVC, $0.818$ in OT\textsubscript{ventral} and $0.870$ in OT\textsubscript{lateral} (all $q=0.032$, with $p=0.008$, the smallest attainable value); cross-load identification was $0.781$, $0.880$ and $0.797$ (same $q$). At 2-back it was lower ($0.724$, $0.688$, $0.708$; $q=0.064$, $0.090$, $0.064$), so 2-back identification does not pass the corrected threshold, although each uncorrected $p$ is below $0.05$. No auditory, frontal, parietal or cingulate ROI reached $q<0.05$ for any identification measure (smallest $q=0.187$, FP\textsubscript{parietal} at 0-back). The cross-run reliability of the Math$-$Story pattern was above zero in all eight ROIs ($q\le0.015$) and was highest in FP\textsubscript{parietal} ($r=0.768$, 95\,\% interval $[0.726,0.805]$), FP\textsubscript{dlpfc} ($0.742$) and AUD\textsubscript{assoc} ($0.719$), and lowest in OT\textsubscript{ventral} ($0.349$).
+
+Removing the most selective grayordinates lowered 0-back identification more than removing random grayordinates (Table~\ref{tab:rsa}, last column). At 50\,\% removal the excess drop was $0.170$ in OT\textsubscript{lateral} ($[0.103,0.243]$), $0.137$ in OT\textsubscript{ventral} ($[0.085,0.187]$), $0.118$ in FP\textsubscript{parietal} ($[0.073,0.172]$) and $0.112$ in EVC ($[0.088,0.136]$), each positive in all eight participants ($q=0.049$, at the floor for $n=8$), whereas the drops after random removal were between $-0.004$ and $+0.002$. Identification nevertheless remained well above chance after removal of half the selective grayordinates: $0.714$ in EVC, $0.685$ in OT\textsubscript{ventral} and $0.698$ in OT\textsubscript{lateral} (group baseline minus selective drop). The picture is a code that is distributed enough to survive the loss of its most selective half, but is not uniformly spread. At 2-back and for cross-load identification the excess drops in the visual ROIs were of similar magnitude ($0.072$--$0.170$), but only EVC passed the corrected threshold (2-back: $0.121$, cross-load: $0.072$, both $q=0.049$; OT regions $q\ge0.064$). No excess drop reached $q<0.05$ in AUD\textsubscript{early}, AUD\textsubscript{assoc}, FP\textsubscript{dlpfc} or the cingulate ROI at either removal fraction ($q\ge0.149$).
+
+The structure of the $4\times4$ category RDM was similar across loads in OT\textsubscript{ventral} (Spearman $0.379$, $[0.114,0.607]$, $p=0.040$ uncorrected), OT\textsubscript{lateral} ($0.279$, $[0.086,0.479]$, $p=0.053$) and FP\textsubscript{parietal} ($0.293$, $[0.021,0.557]$, $p=0.109$), and not in EVC ($0.107$, $[-0.357,0.507]$, $p=0.634$) or the auditory, FP\textsubscript{dlpfc} and cingulate ROIs ($p\ge0.366$). None of these survives correction over ROIs (smallest uncorrected $p=0.040$ over 8 ROIs). Between-participant noise ceilings of the category RDM (Spearman, lower--upper bound) were $0.571$--$0.664$ (0-back) and $0.629$--$0.679$ (2-back) in OT\textsubscript{ventral}, $0.429$--$0.550$ and $0.614$--$0.621$ in EVC, and $0.500$--$0.571$ and $0.386$--$0.471$ in FP\textsubscript{parietal}, but $-0.357$--$0.129$ (0-back) and $0.129$--$0.300$ (2-back) in AUD\textsubscript{assoc}. With six pairs per RDM these are coarse.
+
+\subsection{H2: dissociation of load and category, and invariance of the category code}
+\label{sec:res-h2}
+\begin{table*}[t]
+\caption{Leave-one-subject-out ridge decoding ($n=8$). Category (chance 0.25): train$\to$test load. Load: 0- vs 2-back (chance 0.5), full pattern with participant bootstrap 95\% interval; pattern only = ROI mean removed from every block (permutation $p$ in brackets, 300 permutations, smallest attainable 0.003); mean $\Delta$ = ROI-mean $t$, 2-back minus 0-back (participants with a positive difference). Story vs Math: chance 0.5. Bold: $q<0.05$ (category and load: permutation $p$ with 1000 permutations, BH over 40 tests; pattern only and Story vs Math: BH over 8 ROIs).}
+\label{tab:dec}
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+ & \multicolumn{4}{c}{Category} & \multicolumn{3}{c}{Load} & Story \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-8}
+ROI & $0\!\to\!0$ & $2\!\to\!2$ & $0\!\to\!2$ & $2\!\to\!0$ & Full & Pattern only ($p$) & Mean $\Delta$ & vs Math \\
+\midrule
+EVC & \textbf{0.812} & \textbf{0.719} & \textbf{0.562} & \textbf{0.656} & \textbf{0.680} [0.59, 0.77] & \textbf{0.656} (0.003) & -0.060 (3/8) & 0.750 \\
+OT$_\mathrm{ventral}$ & \textbf{0.781} & \textbf{0.656} & \textbf{0.641} & \textbf{0.625} & \textbf{0.664} [0.61, 0.73] & 0.516 (0.372) & -0.255 (0/8) & \textbf{1.000} \\
+OT$_\mathrm{lateral}$ & \textbf{0.688} & \textbf{0.578} & \textbf{0.500} & \textbf{0.547} & \textbf{0.641} [0.56, 0.71] & \textbf{0.609} (0.020) & -0.415 (0/8) & \textbf{0.938} \\
+AUD$_\mathrm{early}$ & 0.250 & 0.281 & 0.203 & 0.219 & 0.609 [0.58, 0.65] & 0.578 (0.106) & -0.107 (1/8) & \textbf{0.938} \\
+AUD$_\mathrm{assoc}$ & 0.250 & 0.375 & 0.281 & 0.219 & \textbf{0.703} [0.67, 0.74] & \textbf{0.703} (0.003) & -0.067 (2/8) & \textbf{1.000} \\
+FP$_\mathrm{dlpfc}$ & 0.375 & 0.312 & 0.188 & 0.219 & \textbf{0.711} [0.63, 0.78] & \textbf{0.719} (0.003) & +0.264 (8/8) & \textbf{1.000} \\
+FP$_\mathrm{parietal}$ & \textbf{0.516} & \textbf{0.484} & \textbf{0.422} & \textbf{0.516} & \textbf{0.766} [0.67, 0.84] & \textbf{0.789} (0.003) & +0.218 (7/8) & \textbf{1.000} \\
+Cing/pre-SMA & 0.375 & 0.297 & 0.234 & 0.188 & \textbf{0.656} [0.54, 0.76] & \textbf{0.641} (0.017) & +0.051 (6/8) & \textbf{0.938} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_decoding}
+\caption{Leave-one-subject-out decoding ($n=8$). (a) Category accuracy for the four train/test combinations. (b) Load accuracy for the full pattern and after ROI-mean removal; grey bars mark the 97.5th percentile of the permutation null for the mean-removed decoder. Baseline: full-pattern decoding; extension: cross-load decoding and the mean-removal control.}
+\label{fig:dec}
+\end{figure*}
+\textbf{Where is each demand decodable?} Category decoding (chance 0.25; Table~\ref{tab:dec}, Fig.~\ref{fig:dec}a) was above chance in all four train/test combinations in EVC, OT\textsubscript{ventral}, OT\textsubscript{lateral} and FP\textsubscript{parietal} ($q\le0.006$) and in no combination in AUD\textsubscript{early}, AUD\textsubscript{assoc}, FP\textsubscript{dlpfc} or the cingulate ROI (smallest $q=0.078$). Within 0-back the accuracies were $0.812$ (EVC), $0.781$ (OT\textsubscript{ventral}), $0.688$ (OT\textsubscript{lateral}) and $0.516$ (FP\textsubscript{parietal}). Load decoding (chance 0.5) was above chance in seven of eight ROIs ($q\le0.010$), with $0.766$ in FP\textsubscript{parietal} ($[0.672,0.844]$), $0.711$ in FP\textsubscript{dlpfc} ($[0.633,0.781]$), $0.703$ in AUD\textsubscript{assoc} ($[0.672,0.742]$), $0.680$ in EVC, $0.664$ in OT\textsubscript{ventral}, $0.656$ in the cingulate ROI and $0.641$ in OT\textsubscript{lateral}; AUD\textsubscript{early} ($0.609$) had $q=0.060$. The intervals of neighbouring ROIs overlap, and no test of differences between ROIs was run, so the order of ROIs by load accuracy is descriptive. Category information was therefore concentrated in visual cortex and, unexpectedly, parietal cortex, whereas load information was spread over almost all ROIs.
+
+\textbf{Pattern or amplitude?} The ROI-mean activation difference (2-back minus 0-back $t$) was positive in all eight participants in FP\textsubscript{dlpfc} ($+0.264$) and in seven of eight in FP\textsubscript{parietal} ($+0.218$), but negative in OT\textsubscript{ventral} ($-0.255$, 0 of 8 positive) and OT\textsubscript{lateral} ($-0.415$, 0 of 8). After removing the ROI mean from every block, load decoding stayed at or above the full-pattern value in FP\textsubscript{dlpfc} ($0.719$ against $0.711$), FP\textsubscript{parietal} ($0.789$ against $0.766$) and AUD\textsubscript{assoc} ($0.703$ against $0.703$); for these three and for EVC ($0.656$) the permutation $p$ was $0.003$ (the smallest attainable with 300 permutations; $q=0.006$ over the eight ROIs). It remained above the null in OT\textsubscript{lateral} ($0.609$, $q=0.027$) and the cingulate ROI ($0.641$, $q=0.027$), but fell to $0.516$ in OT\textsubscript{ventral} ($p=0.372$) and to $0.578$ in AUD\textsubscript{early} ($q=0.121$). Load decoding in OT\textsubscript{ventral} therefore depends on the ROI mean, whereas the frontoparietal result is a multivoxel pattern and not just a larger average response.
+
+\begin{table*}[t]
+\caption{Is the category code preserved across load? Left: decoding loss (mean within-load minus mean cross-load category accuracy) with participant bootstrap 95\% interval, sign-flip $p$ for any loss, TOST $p$ for equivalence within $\pm0.10$ (BH $q$ over 8 ROIs in brackets) and $m_{\min}$, the smallest margin at which equivalence would hold (the larger absolute end of the 90\% interval). Right: $8\times8$ RDM model: group within-load distinctness (crossnobis units), normalised transfer (1 = same code at both loads) with bootstrap interval, group re-pairing permutation $p$ for transfer $>0$ (5000 draws), and gain (2-back/0-back distinctness, descriptive). n/a: no measurable within-load category distinctness (bootstrap interval includes 0), so transfer and gain are not interpretable.}
+\label{tab:inv}
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccccrccc@{}}
+\toprule
+ & \multicolumn{4}{c}{Decoding loss} & \multicolumn{4}{c}{RDM model}\\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+ROI & Loss [95\% CI] & $p_\text{loss}$ & $p_\text{TOST}$ ($q$) & $m_{\min}$ & Within & Transfer [95\% CI] & $p_\text{perm}$ & Gain \\
+\midrule
+EVC & +0.156 [+0.094, +0.227] & 0.008 & 0.922 (0.92) & 0.223 & +0.771 & 0.95 [0.67, 1.24] & <.001 & 0.91 \\
+OT$_\mathrm{ventral}$ & +0.086 [+0.062, +0.133] & 0.008 & 0.284 (0.57) & 0.130 & +0.587 & 1.00 [0.61, 1.41] & <.001 & 1.11 \\
+OT$_\mathrm{lateral}$ & +0.109 [+0.016, +0.203] & 0.098 & 0.568 (0.84) & 0.209 & +0.508 & 1.39 [0.73, 2.06] & <.001 & 1.01 \\
+AUD$_\mathrm{early}$ & +0.055 [-0.031, +0.141] & 0.366 & 0.188 (0.57) & 0.145 & +0.028 & n/a & n/a & n/a \\
+AUD$_\mathrm{assoc}$ & +0.062 [-0.016, +0.148] & 0.295 & 0.220 (0.57) & 0.149 & +0.027 & n/a & n/a & n/a \\
+FP$_\mathrm{dlpfc}$ & +0.141 [+0.008, +0.266] & 0.117 & 0.706 (0.84) & 0.276 & +0.082 & n/a & n/a & n/a \\
+FP$_\mathrm{parietal}$ & +0.031 [-0.016, +0.086] & 0.493 & 0.025 (0.20) & 0.086 & +0.263 & 0.73 [0.07, 1.48] & 0.076 & 0.83 \\
+Cing/pre-SMA & +0.125 [+0.055, +0.188] & 0.028 & 0.738 (0.84) & 0.196 & -0.010 & n/a & n/a & n/a \\
+\bottomrule
+\end{tabular}
+\end{table*}
+\textbf{Is the category code preserved across load?} Table~\ref{tab:inv} gives the loss in category accuracy when the decoder is tested at the other load. The point estimate of the loss was positive in every ROI: $0.156$ in EVC ($[0.094,0.227]$; $p=0.008$), $0.086$ in OT\textsubscript{ventral} ($[0.062,0.133]$; $p=0.008$), $0.109$ in OT\textsubscript{lateral} ($[0.016,0.203]$; $p=0.098$) and $0.031$ in FP\textsubscript{parietal} ($[-0.016,0.086]$; $p=0.493$). In OT\textsubscript{lateral}, FP\textsubscript{dlpfc} and the cingulate ROI the participant bootstrap interval excludes zero while the sign-flip $p$ does not (OT\textsubscript{lateral} $0.098$, FP\textsubscript{dlpfc} $0.117$; the cingulate ROI has $p=0.028$), so these losses are not firmly established, and loss is uninterpretable in ROIs where category is not decodable at all. Only FP\textsubscript{parietal} fell inside the pre-specified $\pm0.10$ margin (90\,\% interval $[-0.024,0.086]$; TOST $p=0.025$, $m_{\min}=0.086$), but this does not survive correction over the eight ROIs ($q=0.20$). In the other visual ROIs $m_{\min}$ was $0.223$ (EVC), $0.130$ (OT\textsubscript{ventral}) and $0.209$ (OT\textsubscript{lateral}), larger than the margin. In the RDM model, within-load distinctness was reliably positive in EVC ($0.771$), OT\textsubscript{ventral} ($0.587$), OT\textsubscript{lateral} ($0.508$) and FP\textsubscript{parietal} ($0.263$) and not in the auditory, FP\textsubscript{dlpfc} or cingulate ROIs, for which transfer and gain are therefore not reported. Normalised transfer was $0.95$ ($[0.67,1.24]$) in EVC, $1.00$ ($[0.62,1.41]$) in OT\textsubscript{ventral}, $1.39$ ($[0.73,2.06]$) in OT\textsubscript{lateral} and $0.73$ ($[0.07,1.48]$) in FP\textsubscript{parietal}, all consistent with a shared code but none equivalent to full invariance within $\pm0.25$ (TOST $p=0.125$, $0.141$, $0.641$, $0.523$). The re-pairing permutation gave $p<0.001$ for transfer $>0$ in the three visual ROIs and $p=0.076$ in FP\textsubscript{parietal}. Gain was $0.91$, $1.11$, $1.01$ and $0.83$ in the same ROIs; it has no interval and is descriptive. A linear SVM with fold-local scaling (four variants: as specified, without re-scaling, without a regularised intercept, and with $C=10^{-4}$) agreed with the ridge decoder: across category (0-back), load and Story-versus-Math in all eight ROIs the mean accuracies differed by at most $0.14$ (largest: OT\textsubscript{lateral} 0-back category, $0.55$ against $0.69$) and by more than $0.15$ in none of the 24 comparisons.
+
+\subsection{H3: resting-state null}
+\label{sec:res-h3}
+\begin{table}[t]
+\caption{Matched resting-state null for the transfer numerator (cross-load different-category minus same-category distance), participant 103414 only (1000 random 405-frame resting windows). $p$: share of null draws $\ge$ observed; $q$: BH over 8 ROIs. This is a single-participant result.}
+\label{tab:rest}
+\centering\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ROI & Obs. & Null mean & Null SD & Null 95th & $p$ & $q$ \\
+\midrule
+EVC & +0.584 & -0.004 & 0.251 & 0.401 & 0.007 & \textbf{0.028} \\
+OT$_\mathrm{ventral}$ & +0.381 & -0.003 & 0.132 & 0.218 & 0.002 & \textbf{0.016} \\
+OT$_\mathrm{lateral}$ & +1.014 & +0.005 & 0.404 & 0.586 & 0.013 & \textbf{0.035} \\
+AUD$_\mathrm{early}$ & -0.042 & -0.004 & 0.139 & 0.205 & 0.631 & 0.631 \\
+AUD$_\mathrm{assoc}$ & +0.048 & +0.002 & 0.157 & 0.259 & 0.372 & 0.595 \\
+FP$_\mathrm{dlpfc}$ & -0.055 & +0.015 & 0.238 & 0.410 & 0.623 & 0.631 \\
+FP$_\mathrm{parietal}$ & +0.378 & -0.013 & 0.625 & 0.958 & 0.252 & 0.503 \\
+Cing/pre-SMA & -0.005 & +0.008 & 0.174 & 0.289 & 0.520 & 0.631 \\
+\bottomrule
+\end{tabular}
+\end{table}
+Resting data exist for participant 103414 only (Table~\ref{tab:rest}). Over 1000 resting windows the null of the transfer numerator was centred on zero in every ROI (means between $-0.013$ and $+0.015$), which indicates that the estimator is not biased in data without task. The observed transfer numerator exceeded the null in OT\textsubscript{ventral} ($0.381$; null 95th percentile $0.218$; $q=0.016$), EVC ($0.584$; $0.401$; $q=0.028$) and OT\textsubscript{lateral} ($1.014$; $0.586$; $q=0.035$), and did not in FP\textsubscript{parietal} ($0.378$; $0.958$; $q=0.503$), the auditory ROIs, FP\textsubscript{dlpfc} or the cingulate ROI ($q\ge0.595$). The six-pair Spearman $\rho$ of the original statistic had a null standard deviation of $0.450$--$0.464$ and $q\ge0.996$ in every ROI, as described in Section~\ref{sec:failed}. The load decoding and category decoding were not compared with a resting-state null, so H3 is tested only for category-code transfer and only in one participant.
+
+\subsection{H4: a modality-general demand signal}
+\label{sec:res-h4}
+\begin{table*}[t]
+\caption{Cross-task decoding (chance 0.5; Math $\leftrightarrow$ 2-back; participants above chance in brackets). Direction A: trained on WM load, tested on Story vs Math. Direction B: trained on Story vs Math, tested on WM load. Full = whole ROI pattern; pattern = ROI mean removed; mean = ROI mean only. Bold: full-pattern $q<0.05$ (two-sided exact sign-flip over participants, BH over 16 ROI$\times$direction tests). Smallest attainable two-sided $p$ is 0.0078.}
+\label{tab:xt}
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{3}{c}{A: WM load $\to$ Language} & \multicolumn{3}{c}{B: Language $\to$ WM load}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+ROI & Full & Pattern & Mean & Full & Pattern & Mean \\
+\midrule
+EVC & 0.875 (6/8) & 0.875 (6/8) & 0.375 (2/8) & 0.578 (6/8) & 0.555 (5/8) & 0.469 (2/8) \\
+OT$_\mathrm{ventral}$ & 0.750 (5/8) & 0.625 (3/8) & 0.938 (7/8) & \textbf{0.672} (8/8) & 0.531 (4/8) & 0.648 (8/8) \\
+OT$_\mathrm{lateral}$ & 0.812 (6/8) & 0.812 (6/8) & 0.750 (4/8) & \textbf{0.641} (7/8) & 0.586 (6/8) & 0.664 (7/8) \\
+AUD$_\mathrm{early}$ & 0.750 (4/8) & 0.312 (0/8) & 0.938 (7/8) & 0.586 (6/8) & 0.398 (1/8) & 0.602 (6/8) \\
+AUD$_\mathrm{assoc}$ & \textbf{1.000} (8/8) & 1.000 (8/8) & 1.000 (8/8) & 0.602 (7/8) & 0.609 (6/8) & 0.578 (5/8) \\
+FP$_\mathrm{dlpfc}$ & \textbf{1.000} (8/8) & 0.938 (7/8) & 1.000 (8/8) & \textbf{0.664} (8/8) & 0.602 (6/8) & 0.633 (6/8) \\
+FP$_\mathrm{parietal}$ & \textbf{1.000} (8/8) & 1.000 (8/8) & 1.000 (8/8) & 0.625 (6/8) & 0.695 (7/8) & 0.555 (5/8) \\
+Cing/pre-SMA & \textbf{0.938} (7/8) & 0.938 (7/8) & 0.938 (7/8) & 0.594 (6/8) & 0.664 (7/8) & 0.508 (4/8) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_crosstask}
+\caption{Cross-task analyses ($n=8$). (a, b) Accuracy with participant bootstrap 95\,\% intervals for the full pattern, the pattern with the ROI mean removed and the ROI mean alone. (c) Cross-run correlation between the WM load pattern and the Math$-$Story pattern, with 95\,\% interval. All panels are extensions of the baseline pipeline.}
+\label{fig:xt}
+\end{figure*}
+\textbf{Direction A (WM load $\to$ Language).} Within the Language task, Story versus Math was itself decoded across participants at $1.000$ in OT\textsubscript{ventral}, AUD\textsubscript{assoc}, FP\textsubscript{dlpfc} and FP\textsubscript{parietal}, at $0.938$ in OT\textsubscript{lateral}, AUD\textsubscript{early} and the cingulate ROI, and at $0.750$ in EVC (Table~\ref{tab:dec}; $q\le0.003$ except EVC, $q=0.084$). The decoder trained on 2-back versus 0-back in other participants separated Math from Story perfectly in AUD\textsubscript{assoc}, FP\textsubscript{dlpfc} and FP\textsubscript{parietal} (accuracy $1.000$, all eight participants above chance, $q=0.025$) and with $0.938$ in the cingulate ROI (7 of 8, $q=0.036$; Table~\ref{tab:xt}, Fig.~\ref{fig:xt}a). The visual ROIs and AUD\textsubscript{early} were also above $0.5$ on average (EVC $0.875$, 6 of 8; OT\textsubscript{lateral} $0.812$; OT\textsubscript{ventral} $0.750$; AUD\textsubscript{early} $0.750$) but did not reach $q<0.05$ (EVC $q=0.056$, the others $q\ge0.142$). No accuracy was below $0.5$ where the test was significant, so the mapping Math $\leftrightarrow$ 2-back was not reversed. After ROI-mean removal, transfer survived in AUD\textsubscript{assoc} ($1.000$, 8 of 8) and FP\textsubscript{parietal} ($1.000$, 8 of 8; both $q=0.034$), FP\textsubscript{dlpfc} ($0.938$, 7 of 8) and the cingulate ROI ($0.938$, 7 of 8; both $q=0.039$); in EVC it stayed at $0.875$ (6 of 8, $q=0.060$), whereas in AUD\textsubscript{early} it fell to $0.312$ (0 of 8) while the ROI mean alone gave $0.938$ (7 of 8) and in OT\textsubscript{ventral} the mean alone gave $0.938$ against $0.625$ for the pattern. The ROI mean alone also gave perfect transfer in AUD\textsubscript{assoc}, FP\textsubscript{dlpfc} and FP\textsubscript{parietal}, so in these ROIs both mean and pattern carry the axis.
+
+\textbf{Direction B (Language $\to$ WM load).} Accuracies were smaller (Table~\ref{tab:xt}). The full pattern passed $q<0.05$ in OT\textsubscript{ventral} ($0.672$, 8 of 8, $q=0.025$), FP\textsubscript{dlpfc} ($0.664$, 8 of 8, $q=0.025$) and OT\textsubscript{lateral} ($0.641$, 7 of 8, $q=0.036$), not in AUD\textsubscript{early} ($0.586$, $q=0.056$), AUD\textsubscript{assoc} ($0.602$, $q=0.062$), the cingulate ROI ($0.594$, $q=0.125$), FP\textsubscript{parietal} ($0.625$, 6 of 8, $q=0.125$) or EVC ($0.578$, $q=0.142$). The two visual ROIs' transfer is carried by the ROI mean (mean alone: $0.648$, 8 of 8, $q=0.034$ in OT\textsubscript{ventral}; $0.664$, 7 of 8, $q=0.039$ in OT\textsubscript{lateral}; pattern only $0.531$ and $0.586$). Where the mean was removed, the best pattern-only accuracies were FP\textsubscript{parietal} ($0.695$, 7 of 8, $p=0.023$, $q=0.056$) and the cingulate ROI ($0.664$, 7 of 8, $p=0.031$, $q=0.060$); no direction-B pattern-only result reached $q<0.05$.
+
+\begin{table}[t]
+\caption{Shared demand axis: cross-run correlation between the WM load pattern (2-back$-$0-back) and the Language Math$-$Story pattern within each ROI ($n=8$; mean of Fisher-$z$, 95\% participant bootstrap interval). $k$: participants with $r>0$. $p$: two-sided sign-flip (10{,}000 random sign assignments); $q$: BH over 8 ROIs. $\rho_\mathrm{WM}$, $\rho_\mathrm{Lang}$: within-task LR/RL reliabilities. $r_\mathrm{corr}$: reliability-corrected $r$, shown only where both reliabilities exceed 0.2.}
+\label{tab:dem}
+\centering\scriptsize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+ROI & $r$ [95\% CI] & $k$ & $p$ & $q$ & $\rho_\mathrm{WM}$ & $\rho_\mathrm{Lang}$ & $r_\mathrm{corr}$ \\
+\midrule
+EVC & 0.085 [-0.05, 0.22] & 5/8 & 0.344 & 0.344 & 0.16 & 0.44 & -- \\
+OT$_\mathrm{ventral}$ & \textbf{0.070} [0.02, 0.12] & 6/8 & 0.031 & 0.041 & 0.06 & 0.34 & -- \\
+OT$_\mathrm{lateral}$ & \textbf{0.184} [0.12, 0.25] & 8/8 & 0.008 & 0.023 & 0.10 & 0.57 & -- \\
+AUD$_\mathrm{early}$ & 0.050 [-0.01, 0.11] & 5/8 & 0.210 & 0.240 & 0.06 & 0.43 & -- \\
+AUD$_\mathrm{assoc}$ & \textbf{0.123} [0.06, 0.17] & 7/8 & 0.014 & 0.023 & 0.10 & 0.71 & -- \\
+FP$_\mathrm{dlpfc}$ & \textbf{0.241} [0.13, 0.33] & 7/8 & 0.014 & 0.023 & 0.29 & 0.73 & 0.42 \\
+FP$_\mathrm{parietal}$ & \textbf{0.430} [0.26, 0.52] & 7/8 & 0.014 & 0.023 & 0.40 & 0.76 & 0.66 \\
+Cing/pre-SMA & \textbf{0.214} [0.10, 0.31] & 7/8 & 0.014 & 0.023 & 0.18 & 0.55 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+\textbf{Demand-axis correlation.} Between independent runs, the WM load pattern and the Math$-$Story pattern correlated most strongly in FP\textsubscript{parietal} ($r=0.430$, $[0.263,0.515]$, positive in 7 of 8, $q=0.023$), then in FP\textsubscript{dlpfc} ($0.241$), the cingulate ROI ($0.214$), OT\textsubscript{lateral} ($0.184$, 8 of 8), AUD\textsubscript{assoc} ($0.123$) and OT\textsubscript{ventral} ($0.070$, $[0.024,0.116]$, $q=0.041$); EVC ($0.085$, $q=0.344$) and AUD\textsubscript{early} ($0.050$, $q=0.240$) did not differ from zero (Table~\ref{tab:dem}, Fig.~\ref{fig:xt}c). The within-task reliability of the WM load pattern was below 0.2 in every ROI except FP\textsubscript{dlpfc} ($0.29$) and FP\textsubscript{parietal} ($0.40$), so a reliability-corrected correlation is reported only for those two ($0.42$ and $0.66$); elsewhere the uncorrected $r$ is attenuated by low reliability by an unknown amount. The frontoparietal correlations were larger than those of the other ROIs, but sensory ROIs were not at zero everywhere: OT\textsubscript{lateral} ($r>0$ in 8 of 8 participants) and OT\textsubscript{ventral} (6 of 8) had a positive mean correlation with $q<0.05$.
+
+\subsection{Summary of the evidence}
+Table~\ref{tab:summary} condenses the findings. Strong results ($q<0.05$ and a consistent direction across participants) are: category information in EVC and OT; load information in seven of eight ROIs, as a multivoxel pattern in frontoparietal and auditory-association cortex and as an amplitude difference in OT\textsubscript{ventral}; transfer of the WM load pattern to Math versus Story in AUD\textsubscript{assoc}, FP\textsubscript{dlpfc}, FP\textsubscript{parietal} and the cingulate ROI; and a cross-run demand-axis correlation that is largest in FP\textsubscript{parietal}. Unresolved results are: invariance of the category code across load (not shown in any ROI after correction), parietal category information (a lead, see Section~\ref{sec:disc-limits}), pattern-level transfer in direction B, and H3 beyond one participant.
+
+\begin{table}[t]
+\caption{Status of each hypothesis after the \Nsub{}-participant analysis.}
+\label{tab:summary}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.75cm}p{2.6cm}p{4.2cm}@{}}
+\toprule
+ & Status & Basis \\
+\midrule
+H1 & Supported (visual ROIs) & Identification $0.78$--$0.88$ in EVC/OT at 0-back and cross-load ($q=0.032$); survives removal of the top 50\,\% of selective grayordinates but loses more than random removal. \\
+H2a & Partly supported & Category in EVC/OT (and FP\textsubscript{parietal}); load in 7/8 ROIs, highest in FP\textsubscript{parietal}; no clean double dissociation. \\
+H2b & Not established & Loss $0.09$--$0.16$ in visual ROIs; equivalence only in FP\textsubscript{parietal} before correction ($q=0.20$). \\
+H3 & Partly tested & Transfer exceeds the resting null in EVC, OT (1 participant); load not tested. \\
+H4 & Partly supported & Direction A in FP, cingulate and AUD\textsubscript{assoc} (pattern survives mean removal); direction B weak; demand-axis $r$ largest in FP\textsubscript{parietal}. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion and Conclusion}
+\label{sec:discussion}
+
+\subsection{What the data show}
+In eight HCP participants, category information was reproducible across runs and decodable across brains in early visual and occipito-temporal cortex, which is the expected result \cite{haxby2001,kanwisher1997,epstein1998,downing2001} and serves mainly as a check that the pipeline works: cross-run identification at 0-back was $0.82$--$0.87$ and the pattern survived the removal of half of the most selective grayordinates, although it lost more than random removal would cost. In the sense of H1 the code is therefore distributed but not uniformly, which is a more cautious statement than the strong reading of \cite{haxby2001}. A similar result in HCP data, with a different task and different ROI definitions, is a modest replication, not a new finding.
+
+Load information was far less localised than H2 assumed. It was decodable in seven of eight ROIs, including early visual cortex, and the ordering of ROIs (FP\textsubscript{parietal} $0.766$ highest) rests on overlapping intervals. What the mean-removal control adds is a distinction of kind: in frontoparietal and auditory-association cortex the load decoder survives removal of the ROI mean, whereas in OT\textsubscript{ventral} it does not and the ROI mean is lower at 2-back in all participants. A frontoparietal signal that is a spatial pattern, and not only a larger response, is compatible with the multiple-demand account \cite{duncan2010}, while the ventral-temporal effect looks like an amplitude change in a region that is not specialised for load. Category information, for its part, was not confined to OT cortex: it was also decodable in FP\textsubscript{parietal}, at lower accuracy ($0.48$--$0.52$ within load). Because the WM schedule is shared by all participants and places blocks are correlated with time in the same direction in both runs (Section~\ref{sec:res-prelim}), a schedule-locked component may contribute to this effect; we treat it as a lead that needs the leave-one-category-out check, not as a finding.
+
+The category code was largely, but not demonstrably fully, preserved across load. Cross-load accuracy remained above chance in every ROI with category information, and the normalised transfer of the RDM model was close to 1 in the visual ROIs; yet decoding lost $0.09$--$0.16$ in accuracy in those ROIs, and none of the equivalence tests passed after correction. The only ROI within the pre-specified margin was FP\textsubscript{parietal} (TOST $p=0.025$, $q=0.20$, $m_{\min}=0.086$), where the small loss goes with a small within-load accuracy and a wide interval for transfer ($[0.07,1.48]$). We cannot say that the code is invariant, nor that it is not: with eight participants an equivalence test can succeed only if the between-participant spread is small, and a part of the loss may simply reflect the lower within-load accuracy at 2-back ($0.72$ against $0.81$ in EVC) rather than a change of code. Model~\eqref{eq:rep} reads the gain ($0.91$, $1.11$ and $1.01$ in EVC and the two OT ROIs) as roughly constant, which is consistent with a shared code of stable strength, but gain is a ratio of noisy distances without an interval.
+
+The cross-task results give the clearest support to H4, with caveats. A decoder trained on load in the other participants labelled Math blocks as 2-back in AUD\textsubscript{assoc}, FP\textsubscript{dlpfc}, FP\textsubscript{parietal} and the cingulate ROI; in all four the effect survived removal of the ROI mean ($0.94$--$1.00$), although the ROI mean alone also carried it. The Language schedule differs between participants, so a drift locked to the shared WM schedule is unlikely to explain direction A. The perfect accuracy should be read with care: Story versus Math is itself decoded at ceiling in these ROIs ($1.000$ within Language), so a WM-load decoder only has to point in the same direction along an axis that is already easy to read, and the result shows direction agreement more than a common geometry. The reverse direction, in which the WM load blocks are hard to classify even within WM, was weak, and no pattern-only result passed correction; the strongest was FP\textsubscript{parietal} ($0.695$, $q=0.056$). The correlation between the two demand patterns, which is a continuous measure not limited by accuracy ceilings, tells the same story: it was largest in FP\textsubscript{parietal} ($0.430$; $0.66$ after reliability correction) and smaller but positive elsewhere. The expected dissociation between frontoparietal and sensory cortex is only partial. EVC and AUD\textsubscript{early} did not differ from zero, but OT\textsubscript{lateral}, OT\textsubscript{ventral} and AUD\textsubscript{assoc} did, with $r=0.07$--$0.18$; in OT\textsubscript{ventral} and AUD\textsubscript{early} the transfer was carried by the ROI mean (a shared activation shift), not by a shared pattern. We read this as an axis that is strongest and most pattern-like in parietal cortex, with graded, partly amplitude-driven contributions elsewhere, and not as a sharp boundary between demand-general and sensory regions.
+
+The resting-state null supports the estimator for one participant: the null of the transfer numerator centred on zero, and the transfer in EVC, OT\textsubscript{ventral} and OT\textsubscript{lateral} was above it. H3 as formulated asks that both load and category effects exceed the null; it has been tested only for category-code transfer and only in one participant.
+
+\subsection{Relation to earlier work and what is new}
+The individual findings are in line with earlier work: pattern information for object categories in ventral temporal cortex \cite{haxby2001}, a frontoparietal response to working-memory demand \cite{duncan2010,barch2013}, and load-dependent fidelity of sensory representations \cite{emrich2013}. We do not claim these. What we add is the combination on one dataset and several controls, which as far as we know is not available in this form: a transfer and gain model on the full RDM with equivalence tests in place of a failure to reject \cite{kriegeskorte2013,bernardi2020,schuirmann1987}, a resting-state null matched to the task pipeline, mean-removal and mean-only controls for every cross-task decoder \cite{coutanche2013}, and a cross-run correlation of demand patterns between two tasks with a reliability correction. We did not carry out a systematic literature search, so priority claims should be checked before they are made, and our own failed variants (Section~\ref{sec:failed}) show how easily a plausible statistic can be uninformative at this scale.
+
+\subsection{Limitations}
+\label{sec:disc-limits}
+The main limitation is sample size. With $n=8$, the sign-flip test has a floor at $p=0.0078$, so ``significant'' results with $q=0.032$ or $0.049$ are results in which every participant has the same sign, and the participant bootstrap intervals are approximate. Equivalence cannot be shown unless the between-participant variance is small. Second, the schedule confound described in Section~\ref{sec:res-prelim}: the WM schedule is shared, places blocks are correlated with time ($+0.61$ and $+0.51$), and a decoder trained across participants can use schedule-locked structure \cite{haynes2006}; the planned leave-one-category-out check has not been run on these data. Third, the resting-state null exists for one participant, no resting null was run for the decoders, and the spin test is not done, so the grayordinate overlaps of Section~\ref{sec:res-prelim} are descriptive. Fourth, ROIs differ in size by about a factor of four; accuracy comparisons across ROIs are descriptive. Fifth, we did not apply spatial whitening to the distances, used $t$-maps rather than noise-normalised estimates, and used a group parcellation, so ROI boundaries are blurred in individuals. Sixth, we have no behavioural data in the analysis, so we cannot relate decoding to performance, and 2-back blocks may differ from 0-back blocks in accuracy and engagement, which would change pattern strength without changing the code. Seventh, the multiplicity is considerable: several families of tests are corrected separately, so the overall false-positive rate is higher than any single $q$. Finally, some controls defined in the revised notebook (leave-one-category-out decoding, the resting-state decoding control, the standard-deviation-normalised variant of mean removal) were not run on these data and are not reported.
+
+\subsection{Future work}
+The most useful next steps are to add participants (a larger sample removes the sign-flip floor and makes equivalence tests feasible; a power calculation should come first), to add resting-state runs for every participant so that the null can be used for group inference and for the decoders, to run the schedule controls and the spin test, to repeat the analysis with whitened distances, and to relate the demand axis to behaviour. A mechanistic extension, an activity-silent model with short-term synaptic plasticity of the kind used in the class models, could be compared with the observed gain and transfer, but it is outside the present scope.
+
+\subsection{Conclusion}
+In a pilot of eight HCP participants, a two-stage encoding and representational analysis of working-memory and language task-fMRI supports four conclusions. Category is reproducibly and distributedly coded in early visual and occipito-temporal cortex. Load is carried by a pattern, not only an average response, in frontoparietal and auditory-association cortex, and by an amplitude change in ventral temporal cortex. The category code is largely preserved across load but invariance was not established. A WM-load pattern transfers to Math versus Story in frontoparietal, cingulate and auditory-association cortex, with the strongest and most pattern-like correspondence in parietal cortex, and with a partly amplitude-driven correspondence in sensory ROIs. The results are limited by the number of participants, a shared WM schedule, and a resting-state null available for one participant; they are best treated as a pilot, and the analysis code runs unchanged on a larger sample.
+
+\begin{thebibliography}{00}
+\bibitem{vanessen2013} D. C. Van Essen \emph{et al.}, ``The WU-Minn Human Connectome Project: an overview,'' NeuroImage, vol. 80, pp. 62--79, 2013.
+\bibitem{barch2013} D. M. Barch \emph{et al.}, ``Function in the human connectome: task-fMRI and individual differences in behavior,'' NeuroImage, vol. 80, pp. 169--189, 2013.
+\bibitem{drobyshevsky2006} A. Drobyshevsky, S. B. Baumann, and W. Schneider, ``A rapid fMRI task battery for mapping of visual, motor, cognitive, and emotional function,'' NeuroImage, vol. 31, pp. 732--744, 2006.
+\bibitem{kanwisher1997} N. Kanwisher, J. McDermott, and M. M. Chun, ``The fusiform face area: a module in human extrastriate cortex specialized for face perception,'' J. Neurosci., vol. 17, pp. 4302--4311, 1997.
+\bibitem{epstein1998} R. Epstein and N. Kanwisher, ``A cortical representation of the local visual environment,'' Nature, vol. 392, pp. 598--601, 1998.
+\bibitem{downing2001} P. E. Downing \emph{et al.}, ``A cortical area selective for visual processing of the human body,'' Science, vol. 293, pp. 2470--2473, 2001.
+\bibitem{duncan2010} J. Duncan, ``The multiple-demand (MD) system of the primate brain: mental programs for intelligent behaviour,'' Trends Cogn. Sci., vol. 14, pp. 172--179, 2010.
+\bibitem{haxby2001} J. V. Haxby \emph{et al.}, ``Distributed and overlapping representations of faces and objects in ventral temporal cortex,'' Science, vol. 293, pp. 2425--2430, 2001.
+\bibitem{kriegeskorte2008} N. Kriegeskorte, M. Mur, and P. Bandettini, ``Representational similarity analysis --- connecting the branches of systems neuroscience,'' Front. Syst. Neurosci., vol. 2, art. 4, 2008.
+\bibitem{emrich2013} S. M. Emrich, A. C. Riggall, J. J. LaRocque, and B. R. Postle, ``Distributed patterns of activity in sensory cortex reflect the precision of multiple items maintained in visual short-term memory,'' J. Neurosci., vol. 33, pp. 6516--6523, 2013.
+\bibitem{kriegeskorte2013} N. Kriegeskorte and R. A. Kievit, ``Representational geometry: integrating cognition, computation, and the brain,'' Trends Cogn. Sci., vol. 17, pp. 401--412, 2013.
+\bibitem{bernardi2020} S. Bernardi \emph{et al.}, ``The geometry of abstraction in the hippocampus and prefrontal cortex,'' Cell, vol. 183, pp. 954--967, 2020.
+\bibitem{binder2011} J. R. Binder \emph{et al.}, ``Mapping anterior temporal lobe language areas with fMRI: a multicenter normative study,'' NeuroImage, vol. 54, pp. 1465--1475, 2011.
+\bibitem{woolrich2001} M. W. Woolrich, B. D. Ripley, M. Brady, and S. M. Smith, ``Temporal autocorrelation in univariate linear modeling of fMRI data,'' NeuroImage, vol. 14, pp. 1370--1386, 2001.
+\bibitem{walther2016} A. Walther \emph{et al.}, ``Reliability of dissimilarity measures for multi-voxel pattern analysis,'' NeuroImage, vol. 137, pp. 188--200, 2016.
+\bibitem{nili2014} H. Nili \emph{et al.}, ``A toolbox for representational similarity analysis,'' PLoS Comput. Biol., vol. 10, e1003553, 2014.
+\bibitem{coutanche2013} M. N. Coutanche, ``Distinguishing multi-voxel patterns and mean activation: why, how, and what does it tell us?,'' Cogn. Affect. Behav. Neurosci., vol. 13, pp. 667--673, 2013.
+\bibitem{haynes2006} J.-D. Haynes and G. Rees, ``Decoding mental states from brain activity in humans,'' Nat. Rev. Neurosci., vol. 7, pp. 523--534, 2006.
+\bibitem{stelzer2013} J. Stelzer, Y. Chen, and R. Turner, ``Statistical inference and multiple testing correction in classification-based multi-voxel pattern analysis (MVPA),'' NeuroImage, vol. 65, pp. 69--82, 2013.
+\bibitem{nichols2002} T. E. Nichols and A. P. Holmes, ``Nonparametric permutation tests for functional neuroimaging: a primer with examples,'' Hum. Brain Mapp., vol. 15, pp. 1--25, 2002.
+\bibitem{glasser2016} M. F. Glasser \emph{et al.}, ``A multi-modal parcellation of human cerebral cortex,'' Nature, vol. 536, pp. 171--178, 2016.
+\bibitem{robinson2014} E. C. Robinson \emph{et al.}, ``MSM: a new flexible framework for multimodal surface matching,'' NeuroImage, vol. 100, pp. 414--426, 2014.
+\bibitem{salimi2014} G. Salimi-Khorshidi \emph{et al.}, ``Automatic denoising of functional MRI data: combining independent component analysis and hierarchical fusion of classifiers,'' NeuroImage, vol. 90, pp. 449--468, 2014.
+\bibitem{benjamini1995} Y. Benjamini and Y. Hochberg, ``Controlling the false discovery rate: a practical and powerful approach to multiple testing,'' J. R. Stat. Soc. B, vol. 57, pp. 289--300, 1995.
+\bibitem{schuirmann1987} D. J. Schuirmann, ``A comparison of the two one-sided tests procedure and the power approach for assessing the equivalence of average bioavailability,'' J. Pharmacokinet. Biopharm., vol. 15, pp. 657--680, 1987.
+\bibitem{mantel1967} N. Mantel, ``The detection of disease clustering and a generalized regression approach,'' Cancer Res., vol. 27, pp. 209--220, 1967.
+\end{thebibliography}
+
+\end{document}
