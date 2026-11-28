@@ -82,7 +82,7 @@ This document holds the supplementary figures and one table for the main report.
 \caption{Parietal category decoding against a schedule-only null. Grey bars are the 95\% range of 1000 draws in which the real task timing was shifted in time and laid over resting data (four people); the small circle is the null mean. The filled dot is task accuracy on the same four people, and the open diamond is task accuracy on all eight. Rows: as analysed, with each block's position in the run removed (linear), and removed (linear plus quadratic). Panel titles read train load $\to$ test load. Across load (panels 3 and 4) the task never leaves the grey bar.}
 \label{figS:shift}
 \end{figure*}
-\begin{table}[t]
+\begin{table}[!b]
 \caption{Parietal category decoding, four people, 1000 shifted-schedule draws. Acc.\ is task accuracy on the same four people; $p$ is one-sided against the draws; $q$ is corrected across all regions, analyses and versions.}
 \label{tabS:shift}
 \centering\small
@@ -106,9 +106,9 @@ Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
 \end{tabular}
 \end{table}
 
-\section*{B. First-level model and quality checks (one participant)}
 \begin{figure*}[!t]
 \centering
+\noindent\textbf{\large B. First-level model and quality checks (one participant)}\par\medskip
 \includegraphics[width=0.97\textwidth]{figures/figS_glm_design.png}
 \caption{Design check for one participant (first-level model). Left: block onsets (shaded) and the convolved regressor for each working-memory condition (top) and for Story and Math (bottom), first run (LR), repetition time 0.72\,s. Right: the matching design matrices, with the condition regressors, head-motion terms and their derivatives, slow cosine drift terms and an intercept; each column is scaled to $\pm1$.}
 \label{figS:glmdesign}
@@ -138,9 +138,9 @@ Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
 \label{figS:wholebrain}
 \end{figure*}
 
-\section*{C. Validation of the pattern analysis}
 \begin{figure*}[!t]
 \centering
+\noindent\textbf{\large C. Validation of the pattern analysis}\par\medskip
 \includegraphics[width=0.97\textwidth]{figures/figS_subject_rdms.png}
 \caption{What one participant's representational geometry looks like (four regions shown, participant 103414). Each cell is the cross-validated distance between two of the eight working-memory conditions, computed from the LR run against the RL run. Dark means the two conditions give similar patterns and bright means they differ. The expected value is zero when two conditions have the same true pattern, so negative values are kept. Rows and columns are 0-back then 2-back, in the order faces, places, tools, body.}
 \label{figS:subjrdm}
@@ -158,9 +158,9 @@ Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
 \label{figS:ceiling}
 \end{figure*}
 
-\section*{D. Decoding across people}
 \begin{figure*}[!t]
 \centering
+\noindent\textbf{\large D. Decoding across people}\par\medskip
 \includegraphics[width=0.97\textwidth]{figures/figS_confusion.png}
 \caption{Which categories the decoder confuses, for each region. Rows are the true category and columns the predicted category (F faces, P places, T tools, B body); each row sums to 1 and chance is 0.25. Top row: trained and tested at the same load. Bottom row: trained at one load and tested at the other. Visual regions show a clear diagonal in both rows; tools and body are the most confused pair.}
 \label{figS:confusion}
@@ -172,9 +172,9 @@ Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
 \label{figS:loadpattern}
 \end{figure*}
 
-\section*{E. Does the category code survive a change of load?}
 \begin{figure*}[!t]
 \centering
+\noindent\textbf{\large E. Does the category code survive a change of load?}\par\medskip
 \includegraphics[width=0.97\textwidth]{figures/figS_transfer_gain.png}
 \caption{Category-code transfer across load (left) and category distinctness gain, 2-back over 0-back (right), for each participant (markers) and for the group (black bar). The shaded band on the left is the equivalence margin of $\pm0.25$ around 1; the dashed line is 1 in both panels. Regions with no reliable category geometry are marked and are not interpreted.}
 \label{figS:transfergain}
