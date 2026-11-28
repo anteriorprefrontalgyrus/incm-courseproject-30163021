@@ -6,16 +6,13 @@
 \setmainfont{STIX Two Text}
 \setmathfont{STIX Two Math}
 \usepackage{cite}
-\usepackage{algorithmic}
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs,array}
-\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
-    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
-
-
-% Number of participants in the current analyses (update when more subjects are added)
+\usepackage{url}
+\usepackage[shortlabels]{enumitem}
+\setlist{nosep,leftmargin=*,topsep=1pt}
 \newcommand{\Nsub}{8}
 
 \begin{document}
@@ -34,7 +31,7 @@ Roll No.\ 2024113016}
 \maketitle
 
 \begin{abstract}
-Working-memory tasks make two kinds of demand on the brain: how much has to be held in mind (\emph{load}) and what is being held (its \emph{category}, such as faces or places). We asked which brain regions carry each kind of information, and whether the code for one survives a change in the other. We used Human Connectome Project brain-imaging data from eight people and our own analysis code. Picture category could be read out reliably from early visual cortex and from visual-object regions of the temporal and occipital lobes, and less securely from parietal cortex. In the visual regions most of this information was kept when load rose from easy (0-back) to hard (2-back), but some was lost, and we could not show that the code is unchanged. Load could be read out from seven of the eight regions we examined. In prefrontal and parietal cortex it was carried by the spatial pattern of activity and not only by overall activity level. A decoder trained to tell hard from easy memory blocks also told Math from Story in a separate language task, in prefrontal, parietal, cingulate and auditory association cortex, which suggests a shared demand signal. We also tested the results against resting-state scans from four of the eight people, with the same task timing laid over them. The visual category result and load in five regions passed this check; the parietal category result and load in early visual cortex did not. A further control that shifted the task timing on resting data and removed each block's position in the run did not rescue the parietal category result across loads. With only eight people, these results are a pilot.
+Working-memory tasks make two kinds of demand on the brain: how much is held (\emph{load}) and what is held (\emph{category}, e.g.\ faces or places). We ask which regions carry each kind of information and whether the code for one survives a change in the other, using Human Connectome Project data from eight people and our own analysis code. Category could be read out reliably from early visual and visual-object cortex, and less securely from parietal cortex. In visual regions most of it was kept when load rose from 0-back to 2-back, but some was lost, and we could not show the code is unchanged. Load could be read out from seven of eight regions, and in prefrontal and parietal cortex as a spatial pattern, not only as overall activity. A decoder trained on hard versus easy memory blocks also told Math from Story in a separate language task in prefrontal, parietal, cingulate and auditory association cortex, suggesting a shared demand signal. Against resting-state scans from four of the eight people with the same task timing laid over them, the visual category result and load in five regions held; parietal category and load in early visual cortex did not, even with shifted timing and block position removed. With eight people, this is a pilot. Code: \url{https://github.com/veeksha12/incm-hcp-task-fmri-project}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -42,384 +39,201 @@ working memory, task fMRI, representational similarity analysis, decoding, repre
 \end{IEEEkeywords}
 
 \section{Aim of the Modelling Exercise}
-\label{sec:aim}
-
-The aim is to build and test a quantitative, pattern-based model of how the brain's response to a working-memory (WM) task is organised by two kinds of demand: a domain-general demand set by memory \emph{load}, and a content-specific demand set by the \emph{category} of what is held (faces, places, tools, body parts). Using Human Connectome Project (HCP) task-fMRI, we ask which regions carry which kind of information and whether the code for one survives a change in the other.
-
-\textbf{Research question.} Do multivoxel activity patterns differ between stimulus categories, and does this category information persist when load rises from 0-back to 2-back? Is the load-related signal shared between a visual task (N-back) and an auditory task (Language: Math versus Story)?
-
-We test four hypotheses, each with a pre-specified analysis and null:
+We build and test a quantitative, pattern-based model of how the brain's response to a working-memory (WM) task is organised by a domain-general demand (memory \emph{load}) and a content-specific demand (the \emph{category} held: faces, places, tools, body parts). Using Human Connectome Project (HCP) task-fMRI, we ask: do multivoxel patterns differ between categories, does this information persist when load rises from 0-back to 2-back, and is the load signal shared between a visual task (N-back) and an auditory one (Language: Math versus Story)? Each hypothesis has a pre-specified analysis and null:
 \begin{itemize}
 \item \textbf{H1 (category patterns).} Each category evokes a distinct, reproducible pattern in occipito-temporal (OT) cortex, distributed rather than carried only by the most selective voxels.
-\item \textbf{H2 (dissociation, invariance).} Load is carried mainly by dorsal frontoparietal and cingulate regions and category by OT cortex; the category code is preserved across loads, so a category decoder transfers across load.
-\item \textbf{H3 (control).} Both effects exceed a null built from resting-state fMRI (rfMRI) analysed with the same pipeline.
-\item \textbf{H4 (modality-general demand).} A 2-back versus 0-back pattern learned in vision transfers to Math versus Story in frontoparietal cortex, but not in sensory cortex.
+\item \textbf{H2 (dissociation, invariance).} Load is carried mainly by frontoparietal and cingulate regions, category by OT cortex, and the category code is preserved across load.
+\item \textbf{H3 (control).} Both effects exceed a null built from resting-state fMRI (rfMRI) run through the same pipeline.
+\item \textbf{H4 (modality-general demand).} A 2-back versus 0-back pattern learned in vision transfers to Math versus Story in frontoparietal but not sensory cortex.
 \end{itemize}
-
-\textbf{Scope.} The analyses use \Nsub{} HCP participants, two runs each (LR and RL), and eight bilateral ROIs from the Glasser parcellation. At this pilot scale, inference uses permutation and sign-flip tests with the participant as the unit, and results are reported with effect sizes and intervals.
+\textbf{Scope.} \Nsub{} HCP participants, two runs each (LR, RL), eight bilateral Glasser-parcellation ROIs. Inference treats the participant as the unit.
 
 \section{Introduction and Motivation}
-\label{sec:intro}
+The HCP WM task is an N-back task with faces, places, tools and body parts in separate blocks, half at 0-back and half at 2-back \cite{vanessen2013,barch2013}; its activations are reliable \cite{drobyshevsky2006,barch2013}. Averaged over category, 2-back versus 0-back engages a frontoparietal ``multiple-demand'' system \cite{duncan2010}; averaged over load, category contrasts recover face-, place- and body-selective OT regions \cite{kanwisher1997,epstein1998,downing2001}. Three questions remain. \emph{(i) Where and how is category coded?} Haxby \emph{et al.}\ \cite{haxby2001} found a distributed code in six subjects and a one-back task; whether HCP WM data agree needs pattern analysis such as RSA \cite{kriegeskorte2008}. \emph{(ii) What does load do to the category code?} It could sharpen, compress or distort the representational geometry, or change only its scale \cite{emrich2013,kriegeskorte2013,bernardi2020}; average activation cannot tell these apart. \emph{(iii) Is demand specific to vision?} If frontoparietal cortex carries a modality-general signal, a load pattern should also separate Math from Story \cite{binder2011}. We claim no novelty for individual methods; the contribution is their combination, with controls (Section~\ref{sec:novelty}).
 
-\subsection{Empirical motivation}
-The HCP WM task is an N-back task with faces, places, tools and body parts in separate blocks, half at 0-back (respond to a fixed target) and half at 2-back (respond when the item matches the one two steps earlier) \cite{vanessen2013,barch2013}. Its activations are reliable across subjects and sessions \cite{drobyshevsky2006,barch2013}. Collapsing over category, 2-back versus 0-back engages dorsal frontoparietal and cingulate regions, consistent with a multiple-demand system serving many cognitive demands \cite{duncan2010}. Collapsing over load, category contrasts recover face-, place- and body-selective OT regions, while tools show no consistent selectivity \cite{barch2013,kanwisher1997,epstein1998,downing2001}. Three questions remain open.
-
-\emph{(i) Where is category information and how is it coded?} Univariate maps test average response. Haxby \emph{et al.}\ \cite{haxby2001} showed that the pattern across ventral temporal voxels identifies the viewed category even after the most selective voxels are removed, favouring a distributed code, but in six subjects and a one-back task. Whether HCP WM data show the same, and where, needs pattern analysis such as RSA \cite{kriegeskorte2008}.
-
-\emph{(ii) What does load do to the category code?} A larger frontoparietal response at 2-back could reflect gain control, non-specific attention or content maintenance, which a univariate contrast cannot separate. The fidelity of remembered content in sensory cortex depends on how much is held \cite{emrich2013}, so load might sharpen, compress or distort the representational geometry (pairwise distances between category patterns), or change only its scale. Average activation cannot distinguish these. The logic of testing whether a code is shared across conditions comes from the representational-geometry literature \cite{kriegeskorte2013,bernardi2020}.
-
-\emph{(iii) Is the demand signal specific to vision?} The HCP Language task contrasts story comprehension with arithmetic (Math) in the auditory modality \cite{binder2011}. If frontoparietal cortex carries a modality-general demand signal, a pattern separating 2-back from 0-back should also separate Math from Story, while sensory regions should not. We claim no novelty for the individual methods; the contribution is their combination on one dataset, with controls.
-
-\subsection{The model and the variations introduced}
-We use a two-stage model. \textbf{Stage 1 (encoding):} at each grayordinate the time series is a linear, time-invariant response to the block design,
+\textbf{Model.} Stage 1 (encoding): at each grayordinate the series is a linear response to the block design,
 \begin{equation}
 y(t)=\sum_{k}\beta_k\,(s_k\ast h)(t)+\text{drift}(t)+\text{motion}(t)+\varepsilon(t),
 \label{eq:glm}
 \end{equation}
-with $\varepsilon_t=\rho\,\varepsilon_{t-1}+u_t$. Here $s_k$ indicates condition $k$ (eight WM conditions: four categories $\times$ two loads; two Language conditions) and $h$ is a double-gamma haemodynamic response function (HRF). The estimates $\beta_k$ (or $t$-values) across an ROI form the pattern $\mathbf{p}_k$.
-
-\textbf{Stage 2 (representational):} the pattern for category $c$ at load $l$ is a shared category code scaled by a load-dependent gain, plus a load offset and noise,
+with $\varepsilon_t=\rho\,\varepsilon_{t-1}+u_t$, condition indicators $s_k$ (eight WM conditions, two Language) and a double-gamma haemodynamic response $h$; the $\beta_k$ or $t$-values over an ROI form pattern $\mathbf{p}_k$. Stage 2 (representational): the pattern for category $c$ at load $l$ is a shared code scaled by a load gain, plus a load offset and noise,
 \begin{equation}
 \mathbf{p}_{c,l}=\mathbf{m}_l+g_l\,\mathbf{s}_c+\boldsymbol{\eta}_{c,l}.
 \label{eq:rep}
 \end{equation}
-Then $g_2<g_0$ means load weakens the code, $g_2=g_0$ with the same $\mathbf{s}_c$ means invariance, and a change in $\mathbf{m}_l$ alone is a pure load effect. Cross-validated distances between condition patterns are the observables: within-load category distances reflect the gain, and category distinctness surviving the load change reflects the shared code (derivation in Methods).
+$g_2<g_0$ means load weakens the code, $g_2=g_0$ with the same $\mathbf{s}_c$ means invariance, and a change in $\mathbf{m}_l$ alone is a pure load effect. Table~\ref{tab:variations} lists our variations on the standard baseline (GLM, RDMs from beta maps, linear decoder; Neuromatch HCP exercise), which we reproduce.
 
-We take the standard workflow (GLM, RDMs from beta maps, linear decoder; the Neuromatch HCP exercise) as the \emph{baseline} and reproduce it. Table~\ref{tab:variations} lists our variations.
-
-\begin{table*}[t]
-\caption{Variations introduced relative to the baseline pipeline.}
+\begin{table}[!tb]
+\caption{Variations relative to the baseline pipeline.}
 \label{tab:variations}
 \centering\footnotesize
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{@{}p{0.5cm}p{3.6cm}p{6.6cm}p{5.6cm}@{}}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}p{0.45cm}p{2.0cm}p{5.5cm}@{}}
 \toprule
- & \textbf{Baseline} & \textbf{Our variation} & \textbf{Motivation}\\
+ & \textbf{Baseline} & \textbf{Our variation (motivation)}\\
 \midrule
-V1 & Library GLM, default settings. & Own design matrix: double-gamma HRF at TR $=0.72$\,s, drift and motion terms; OLS compared with AR(1) prewhitening. & Serial correlation in residuals inflates $t$-statistics if ignored \cite{woolrich2001}.\\
-V2 & RDM from correlation of beta maps. & Own NumPy RSA with cross-run (LR/RL) cross-validated distances; a library used only as a cross-check. & Cross-validated distances have expected value zero without a reproducible difference and are more reliable \cite{walther2016,nili2014}.\\
-V3 & Compare load RDMs with one rank correlation over six category pairs. & Full $8\times8$ RDM: a \emph{transfer} term (shared code across loads), a \emph{gain} term (2-back relative to 0-back distinctness) and an equivalence (TOST) test with a margin fixed beforehand. & Six pairs make a rank correlation unstable; a non-significant difference is not evidence of invariance.\\
-V4 & Chance level as the only reference. & Matched rfMRI null: same design and pipeline on random 405-frame windows of the same subjects' resting data. & Rest data keep the real autocorrelation and spatial structure of the signal.\\
-V5 & Within-task decoding. & Leave-one-subject-out decoding of category and load, cross-load train/test, cross-task decoding (WM load vs.\ Math/Story) and a demand-axis correlation across different runs. & Tests modality-general demand (H4) directly rather than from separate univariate maps \cite{duncan2010}.\\
-V6 & Accuracy and significance taken at face value. & Controls: ROI mean removed \cite{coutanche2013}; shared event timing; fold-local scaling; participant-level sign-flip inference; confirmatory family fixed in advance with FDR \cite{stelzer2013,nichols2002}. & A decoder uses any reliable label difference, including nuisance structure \cite{haynes2006}; many tests inflate false positives.\\
+V1 & Library GLM. & Own design matrix, AR(1) prewhitening vs.\ OLS (serial correlation inflates $t$ \cite{woolrich2001}).\\
+V2 & RDM from beta correlations. & Own NumPy cross-run cross-validated distances (expected value zero without signal \cite{walther2016,nili2014}).\\
+V3 & One rank correlation over six pairs. & Full $8\times8$ RDM with transfer, gain and an equivalence (TOST) test (a non-significant difference is not invariance).\\
+V4 & Chance as only reference. & Matched rfMRI null: same design and pipeline on resting data.\\
+V5 & Within-task decoding. & Leave-one-subject-out, cross-load, cross-task decoding and a demand-axis correlation (tests H4 directly).\\
+V6 & Face-value accuracy. & ROI mean removed \cite{coutanche2013}; timing audit; fold-local scaling; participant-level sign-flip and FDR \cite{stelzer2013,nichols2002}.\\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
-\subsection{Difference from the class models}
-The class models (passive membrane, leaky integrate-and-fire, Hodgkin--Huxley, synapse and dendrite models, FitzHugh--Nagumo) are \emph{mechanistic}: differential equations for membrane potential and gating variables, integrated in time for one neuron or a small circuit and compared with simulated voltage or spikes. Ours is \emph{descriptive and representational}. Its latent quantities are pattern vectors and gains; its observable is the haemodynamic signal at 91{,}282 grayordinates, sampled every 0.72\,s; its dynamics are a linear HRF convolution with AR(1) noise, followed by a static representational stage; its parameters are HRF shape, drift and motion terms, $\rho$, gains, transfer and decoder regularisation; and it is evaluated by cross-validation across runs and subjects, permutation and rfMRI nulls, and equivalence tests rather than by integrating equations.
-
-The two share mathematics. The passive membrane is a linear first-order low-pass filter that turns a current step into a delayed, smoothed voltage; the HRF in \eqref{eq:glm} likewise turns a block of neural activity into a delayed, smoothed haemodynamic response with an undershoot, and in both the response follows from convolving the input with the impulse response. A linear read-out of a population is also what a linear classifier does on ROI patterns.
-
-\textbf{Not done.} We do not simulate spiking or synaptic dynamics. A biophysical model of activity-silent maintenance (short-term synaptic plasticity) was removed from scope after feedback and appears only as future work. Our claims concern information in measured patterns and its dependence on load and modality, not the cellular mechanism.
+\textbf{Difference from class models.} The class models (passive membrane, integrate-and-fire, Hodgkin--Huxley, FitzHugh--Nagumo) are \emph{mechanistic}: differential equations integrated in time and compared with voltage or spikes. Ours is \emph{descriptive and representational}: latent quantities are pattern vectors and gains, the observable is the haemodynamic signal at 91{,}282 grayordinates (TR $0.72$\,s), the dynamics are a linear HRF convolution with AR(1) noise followed by a static stage, and evaluation is by cross-validation, permutation, rfMRI nulls and equivalence tests. The mathematics is shared: the passive membrane is a first-order low-pass filter turning a current step into a delayed, smoothed voltage, as the HRF in \eqref{eq:glm} does for neural activity. We do not simulate spiking or synaptic dynamics; a model of activity-silent maintenance is future work. Our claims concern information in measured patterns, not cellular mechanism.
 
 \section{Methods}
-\label{sec:methods}
+All analyses are in Python (NumPy, SciPy, scikit-learn) in one notebook; GLM, representational analysis and permutation tests are our own implementations. Seeds are fixed.
 
-All analyses were run in Python (NumPy, SciPy, scikit-learn) in a single Jupyter notebook; the GLM, the representational analysis and the permutation tests are our own implementations, and no neuroimaging toolbox is used for inference. Random seeds are fixed throughout.
+\textbf{Data.} \Nsub{} unrelated participants of the HCP 1200 release \cite{vanessen2013}, each with LR and RL runs of the WM (405 frames) and Language (316 frames) tasks \cite{barch2013,binder2011}; four also have resting-state runs. We used minimally pre-processed CIFTI data, MSMAll-aligned \cite{robinson2014} and ICA-FIX cleaned \cite{salimi2014}, with TR $=0.72$\,s (the CIFTI header value of 1.0\,s is wrong and overridden). Block timing comes from the HCP EV files and motion from \texttt{Movement\_Regressors}.
 
-\subsection{Data and participants}
-We used \Nsub{} unrelated participants from the HCP 1200-subject release \cite{vanessen2013}. Each has two runs (LR and RL phase encoding) of the WM and Language tasks \cite{barch2013,binder2011}, and four of them have resting-state runs. Data are the HCP minimally pre-processed CIFTI dense time series on the 32k surface plus subcortical grid (91{,}282 grayordinates), MSMAll-aligned \cite{robinson2014} and cleaned with ICA-FIX \cite{salimi2014}. The WM run has 405 frames and the Language run 316, at $\mathrm{TR}=0.72$\,s (the value of 1.0\,s written in the CIFTI header is wrong and is overridden). No smoothing beyond that in the released data was applied. Block onsets and durations come from the HCP EV files, and the run-wise motion parameters from the released \texttt{Movement\_Regressors}.
+\textbf{Stage-1 GLM.} Per run and grayordinate we fit \eqref{eq:glm}: one regressor per condition, 12 motion terms, a 128\,s discrete-cosine high-pass basis and an intercept. We fit OLS, estimate the lag-1 residual autocorrelation $\rho$, bin it (0.005), whiten data and design per bin, and refit \cite{woolrich2001}. The runs are never merged in cross-run analyses.
 
-\textbf{Tasks.} The WM task has eight block types: four categories (faces, places, tools, body parts) at two loads (0-back, 2-back). The Language task has two block types, Story and Math. Condition names were mapped from EV file names, and the mapping was checked against the number of blocks per condition per run.
+\textbf{ROIs.} Eight bilateral Glasser ROIs \cite{glasser2016}, fixed before decoding: early visual (EVC; 3{,}632 grayordinates), ventral and lateral OT (1{,}850; 788), early and association auditory (1{,}187; 2{,}274), dorsolateral frontoparietal (FP\textsubscript{dlpfc}; 3{,}318), parietal (FP\textsubscript{parietal}; 2{,}460) and cingulate/pre-SMA (1{,}547). Sizes differ about fourfold, so ROI comparisons are descriptive.
 
-\subsection{Stage-1 model: GLM with AR(1) prewhitening}
-For every run separately we fitted \eqref{eq:glm} at every grayordinate. The design matrix contains one regressor per condition (eight for WM, two for Language), each built by convolving a boxcar for the block with a double-gamma HRF sampled at the TR, plus the 12 motion regressors (six parameters and their first derivatives), a discrete cosine basis for high-pass filtering with a 128\,s cut-off, and an intercept. Regressors were not orthogonalised.
+\textbf{Split-half RSA.} For each participant and ROI the LR and RL $t$-maps of the eight conditions give $A,B\in\mathbb{R}^{8\times V}$. \emph{Identification:} after centring across categories within load, a condition is identified when its own cross-run pattern correlates highest (pairwise, chance $0.5$; cross-load uses 0-back from one run and 2-back from the other). \emph{Cross-validated distance:} $d_{ij}=\tfrac1V(\mathbf a_i-\mathbf a_j)^{\!\top}(\mathbf b_i-\mathbf b_j)$, symmetrised over runs \cite{walther2016,nili2014}; $\mathbb E[d_{ij}]=0$ without a reproducible difference. No spatial whitening was applied (a limitation); unit tests cover symmetry, zero diagonal and signal/noise behaviour. \emph{Distributed code:} grayordinates ranked by an $F$ statistic in one run were removed in the other (0--70\,\%) and compared with 100 random removals \cite{haxby2001}. For Language (two conditions) we report only the cross-run reliability of Math$-$Story.
 
-Serial correlation was handled by prewhitening \cite{woolrich2001}. We first fitted ordinary least squares, estimated the lag-1 autocorrelation $\rho$ of the residuals at each grayordinate, and binned $\rho$ in steps of 0.005. For each bin we built one whitening matrix from the AR(1) form, whitened the data and design, and refitted by least squares. This gives one fit per bin rather than one per grayordinate, at negligible loss of precision. The outputs are the $\beta$ estimates and $t$-values for each condition against the implicit baseline. The two runs were never merged in the cross-run analyses (LR is used for one half, RL for the other); for the exploratory first-level maps they were combined by inverse-variance fixed effects.
+\textbf{LOSO decoding.} A dual-form ridge classifier ($\lambda=\mathrm{tr}(K)/n$, one-versus-rest) is trained on all other participants and tested on the held-out one, on single-block $t$-maps with fold-local scaling; targets are category (chance 0.25), load (0.5) and Math/Story (0.5). A linear SVM cross-checks the ridge form. \emph{Cross-load:} train on one load, test on the other, and repeat with each category left out in turn. \emph{Permutation null:} 1000 within-structure label permutations rerunning the full LOSO; bootstrap intervals resample participants, never blocks.
 
-\subsection{Regions of interest}
-Eight bilateral ROIs were assembled from Glasser multimodal parcels \cite{glasser2016} (grayordinate counts in brackets): early visual cortex (EVC; V1--V3; 3{,}632), ventral occipito-temporal (OT\textsubscript{ventral}; FFC, VVC, PIT, V8, VMV1--3, PHA1--3; 1{,}850), lateral occipito-temporal (OT\textsubscript{lateral}; LO1--3, V4t, PH; 788), early auditory (A1, LBelt, MBelt, PBelt, RI; 1{,}187), auditory association (A4, A5, STSdp, STSda, STSvp, STSva, STGa, TA2; 2{,}274), dorsolateral frontoparietal (FP\textsubscript{dlpfc}; 46, p9-46v, a9-46v, 9-46d, 8C, 8Av, 8Ad, FEF, IFJp; 3{,}318), parietal (FP\textsubscript{parietal}; IP1, IP2, IP0, IPS1, LIPd, LIPv, VIP, MIP, 7PL; 2{,}460) and cingulate/pre-SMA (SCEF, 6ma, 24dd, p32pr; 1{,}547). ROI definitions are fixed before any decoding and are the same for all participants. Sizes differ by a factor of about four, so accuracy is compared across ROIs with this in mind, and ROI-specific nulls are used rather than a common chance level.
+\textbf{Pattern versus amplitude.} Decoders can exploit ROI-mean differences \cite{coutanche2013}; load and cross-task decoding were repeated after removing each block's ROI mean (300 permutations for load) and from the ROI mean alone. Information is called \emph{pattern} if it survives mean removal.
 
-\subsection{Split-half representational similarity}
-\label{sec:rsa}
-For each participant and ROI, the $t$-maps of the eight WM conditions from LR and RL form two pattern matrices $A,B\in\mathbb{R}^{8\times V}$. Grayordinates with zero variance in either run were dropped.
+\textbf{Load invariance (H1/H2).} On the $8\times8$ cross-run RDM we compute, per participant and ROI, \emph{within-load distinctness} $\bar d_l$ (mean of the six category distances at load $l$); \emph{transfer} (mean cross-load different-category distance minus same-category distance, divided by the group-mean $(\bar d_0+\bar d_2)/2$; 1 is the same code, 0 none); and \emph{gain} $\bar d_2/\bar d_0$ (since $d\propto g_l^2$). Ratios are interpreted only where within-load distinctness is reliably above zero. The null permutes the $4!$ category correspondences between loads (5000 draws). For invariance we use two one-sided tests (TOST) \cite{schuirmann1987} with margins fixed beforehand ($\pm0.25$ for transfer, $\pm0.10$ for accuracy loss) and report the smallest margin at which equivalence would hold.
 
-\textbf{Reproducibility.} Cross-run \emph{identification}: for each condition the LR pattern is correlated with every RL pattern, and the condition is identified correctly when its own RL pattern correlates highest. Patterns are first centred across the four categories separately within each load (removing the shared task pattern and the load main effect) and then correlated; the results below use \emph{pairwise} identification (own pattern more correlated than each competitor, averaged over competitors and both directions; chance 0.5), and \emph{cross-load} identification uses 0-back patterns from one run against 2-back patterns from the other. For eight-way identification chance would be $1/8$. This is a within-subject test that needs no classifier.
+\textbf{Matched rfMRI null.} For the four participants with resting data we impose the real WM design on random 405-frame resting windows and rerun the pipeline (1000 draws for RSA statistics, with a group null from averaging one draw per person; 100 draws for decoding, so the smallest $p$ is $0.01$ and smallest FDR $q$ is $0.028$).
 
-\textbf{Cross-validated distances.} Distances between conditions $i,j$ are the cross-validated (crossnobis-style) estimate \cite{walther2016,nili2014}
-\begin{equation}
-d_{ij}=\tfrac{1}{V}\,(\mathbf{a}_i-\mathbf{a}_j)^{\!\top}(\mathbf{b}_i-\mathbf{b}_j),
-\end{equation}
-symmetrised over the two run assignments. Noise in the two runs is independent, so $\mathbb{E}[d_{ij}]=0$ when two conditions have the same underlying pattern, and negative values are retained. Spatial whitening is not applied (the pre-whitened $t$-maps are used), which we note as a limitation. The $8\times8$ matrix is split into the 0-back block, the 2-back block and the cross-load block. The implementation passes unit tests for symmetry, a zero diagonal, positive mean distance for simulated signal and near-zero mean for noise.
+\textbf{Cross-task decoding and demand axis.} A ridge classifier trained on WM load in other participants is applied to the held-out participant's Language blocks (direction A), and vice versa (B), with Math $\leftrightarrow$ 2-back fixed beforehand; full, mean-removed and mean-only versions are judged separately. Inference is by exact sign-flip across participants ($2^n$ flips; smallest two-sided $p=0.0078$ at $n=8$) with Benjamini--Hochberg FDR \cite{benjamini1995}, and we report how many people exceed 0.5. The demand axis is the correlation, across grayordinates and between different runs, of the load pattern (2-back minus 0-back) with Math$-$Story, with an attenuation correction only where both reliabilities exceed 0.2. Category RDMs at the two loads are also compared by a Mantel test \cite{mantel1967} and a noise ceiling.
 
-\textbf{Distributed code (voxel removal).} Following Haxby \emph{et al.}\ \cite{haxby2001}, grayordinates were ranked by a one-way $F$ statistic across the four categories, computed in one run only. The top $k\%$ were removed in the \emph{other} run, and identification was recomputed from the remainder. Because removing any grayordinates lowers accuracy, the \emph{excess} loss was compared with removing the same number of randomly selected grayordinates (several random draws). Random removal used 100 draws per participant and ROI, and removal fractions were 0, 10, 20, 30, 50 and 70\,\% (excess drops are reported at 30 and 50\,\%). A category code that survives removal of its most selective units, and loses no more than random removal would, is described as distributed.
+\textbf{Event-timing audit and controls.} Shared schedules can inflate cross-participant decoding. We compared block onsets across participants (``shared'' within 0.5\,s). The WM schedule is shared within about 0.32\,s; the Language schedule differs between people. For parietal category we also (a) shifted the task design circularly in time over random resting windows (1000 draws) and (b) regressed out each block's position in the run (linear, or linear plus quadratic) in task and resting data. These speak for the four people with resting data only.
 
-\textbf{Language reliability.} Because Language has only two conditions, no RDM is possible; we report the cross-run (LR versus RL) correlation of the Math\,$-$\,Story contrast pattern, and use it as the reliability of the Language pattern in the demand analysis of Section~\ref{sec:demand}.
+\textbf{Approaches abandoned.} (1) A Spearman correlation over the six pairs of the two category RDMs was uninformative: the null spread was very wide (SD $\approx0.46$; $q\approx0.996$) and it cannot express equivalence; we replaced it with transfer, gain and TOST. (2) A block-level label-flip null for cross-task decoding was anti-conservative because blocks are not independent (the Math/Story pattern is almost the same across people); we replaced it with the participant-level sign-flip test. A verdict rule that declared ``no transfer'' when full-pattern accuracy was below 0.6 despite pattern-only transfer was also fixed.
 
-\subsection{Leave-one-subject-out decoding}
-\label{sec:decoding}
-Decoding was done leave-one-subject-out (LOSO): a classifier is trained on all other participants and tested on the held-out participant, so generalisation is across brains rather than across runs. Features are the ROI pattern of one block (a $t$-map from a single block) with the participant-wise mean across features not removed unless stated. Targets are category (four classes, chance 0.25), load (two classes, chance 0.5), and Math versus Story (chance 0.5).
-
-\textbf{Classifier.} A ridge classifier in dual form with $\lambda=\lambda_{\mathrm{rel}}\,\mathrm{tr}(K)/n$, $\lambda_{\mathrm{rel}}=1$, where $K=XX^{\top}$ is the training Gram matrix; the dual form is used because $V\gg n$. Multi-class problems use one-versus-rest coding. Feature scaling is fitted on the training participants only (fold-local) and applied to the test participant. A linear SVM (\texttt{LinearSVC}, $C=1$, standardised features, fold-local scaling) was run as a cross-check on the same folds to show that conclusions do not rest on the ridge form.
-
-\textbf{Cross-load decoding.} To ask whether the category code is load-invariant at the decoder level, training used one load and testing the other, in both directions, and the result was compared with within-load accuracy. As a schedule control, category decoding was also repeated with each of the four categories removed in turn (three-way, chance $1/3$), asking whether the across-load code survives the loss of any one category.
-
-\textbf{Permutation null.} Labels were permuted $N_{\mathrm{perm}}=1000$ times \emph{within block structure} (category labels shuffled among blocks of the same load and run, load labels among blocks of the same category), so that the null preserves the number of blocks per cell and the run structure. Each permutation reruns the complete LOSO procedure. $p=(1+\#\{\text{null}\ge\text{obs}\})/(N_{\mathrm{perm}}+1)$. Group accuracy is the mean over held-out participants. Bootstrap confidence intervals (10{,}000 resamples) resample \emph{participants}, never blocks.
-
-\subsection{Pattern versus amplitude}
-\label{sec:amp}
-A multivoxel decoder can exploit differences in the \emph{ROI mean} (an amplitude effect) rather than differences in the spatial pattern \cite{coutanche2013}. The load decoding and the cross-task decoders were therefore repeated after subtracting, within each ROI and block, the mean across grayordinates (pattern only; permutation $p$ for the load analysis used 300 permutations), and decoded from the ROI mean alone, one feature per block (cross-task only). A variant that also divides by the standard deviation across grayordinates is defined in the revised notebook but was not run on these data. A region is described as carrying \emph{pattern} information when accuracy survives mean removal, and as \emph{amplitude-driven} when mean-only decoding matches full decoding and pattern-only is at chance. The difference between full and mean-removed accuracy is reported as point values.
-
-\subsection{Load invariance of the category code (H1/H2 model)}
-\label{sec:h1}
-This is the analysis that operationalises \eqref{eq:rep} on the $8\times8$ cross-run RDM $D$ with entries $d_{(c,l),(c',l')}$ (categories $c,c'$, loads $l,l'$). For each participant and ROI we compute three scalars.
-
-\emph{Within-load distinctness} $\bar d_l$ is the mean of the six off-diagonal category distances within load $l$. \emph{Transfer} is the mean of the cross-load, cross-category distances (e.g.\ face at 0-back versus place at 2-back) minus the mean cross-load, same-category distances (face at 0-back versus face at 2-back); it is positive when categories remain distinguishable across load, i.e.\ when the same code $\mathbf{s}_c$ operates at both loads, and zero when the code is not shared. This numerator is divided by the mean within-load distinctness, $(\bar d_0+\bar d_2)/2$ (\emph{normalised transfer}: 1 means the same code at both loads, 0 means none). Dividing each participant's numerator by that participant's own denominator is unstable when the denominator is near zero, so in the group analysis every participant's numerator is divided by the \emph{group-mean} within-load distinctness instead. \emph{Gain} is $\bar d_2/\bar d_0$: in the model $d\propto g_l^2$, so a ratio below 1 means that load weakens the code. Gain is formed per participant and is undefined (flagged, not silently dropped) where $\bar d_0\le0$; it is unstable when $\bar d_0$ is near zero.
-
-\textbf{Interpretability gate.} A transfer or gain is interpreted only when within-load distinctness is reliably above zero in that ROI (the participant bootstrap interval of the group mean lies above zero), because the ratios are not meaningful where there is no category information to preserve. The original statistic of Section~\ref{sec:failed}, the Spearman correlation $\rho$ between the two six-pair sub-RDMs, is still computed for comparison only.
-
-\textbf{Null.} Condition labels cannot be shuffled freely because the design has structure. We permuted the pairing between categories at 2-back and categories at 0-back (the $4!=24$ relabelings, one of which is the identity). In each of 5000 draws every participant's 2-back categories were relabelled independently by one of the 24 permutations, the group-mean transfer was recomputed, and $p=(1+\#\{\text{null}\ge\text{obs}\})/5001$. This tests whether the category correspondence between loads is non-random in the group; it does not test generalisation to new participants, so it is read together with the bootstrap interval and the participant-level tests below.
-
-\textbf{Equivalence (TOST).} Failing to reject a difference is not evidence of equality. For the claim of invariance we ran two one-sided tests \cite{schuirmann1987} across participants, with equivalence margins fixed before looking at the results: $\pm0.25$ for pooled-normalised transfer and $\pm0.10$ for the decoding-accuracy loss across load. The TOST uses $t$ distributions on the participant-level values. Invariance is claimed only when both one-sided p-values are below $0.05$ (after FDR over ROIs), and we additionally report the smallest margin $m_{\min}$ at which equivalence would hold (the larger absolute end of the 90\,\% interval), so that the reader can judge the result against a stricter or looser margin.
-
-\subsection{Matched resting-state null}
-\label{sec:rest}
-A pipeline can produce non-zero decoding, transfer or gain even on data with no task, because of the temporal and spatial structure of the signal. To obtain a null with the \emph{same} structure, we drew random windows of 405 consecutive frames from the participant's cleaned resting-state runs, imposed the participant's real WM design on each window, and ran the identical pipeline (GLM, RDM, H1 statistics). Repeating this gives a null distribution for every statistic in Sections~\ref{sec:rsa}--\ref{sec:h1}; the observed statistic is compared with the empirical distribution (one-sided, $p=(1+\#\ge)/(n+1)$) and with the participant-level mean. Resting data are available for four of the eight participants. The null is computed for each of them with 1000 draws, and a group null is built by averaging one random draw per participant (also 1000 times) and comparing the observed group mean with that distribution.
-
-\textbf{Resting-state decoding control.} The same windows were also used to test the decoders. For each draw, the real WM design was laid over one random resting window per participant, and the leave-one-subject-out decoding of category and load was repeated on those four participants. Because each draw reruns the whole decoding, this control used 100 draws, so the smallest possible $p$ is $0.01$ and the smallest possible FDR-adjusted $q$ is $0.028$. The task accuracy was recomputed on the same four participants for a like-for-like comparison.
-
-\subsection{Cross-task decoding and the shared demand axis}
-\label{sec:demand}
-\textbf{Cross-task decoder.} H4 asks whether a pattern that separates 2-back from 0-back in the visual WM task also separates Math from Story in the auditory Language task. In direction A a ridge classifier is trained on WM load (0-back versus 2-back) in the other participants and applied to the held-out participant's Language blocks; in direction B it is trained on Language (Story versus Math) and tested on WM load. The mapping Math $\leftrightarrow$ 2-back is fixed before the analysis (Math is the more demanding condition); accuracy below 0.5 would mean that the mapping is reversed. The analysis was repeated for the full pattern, the ROI-mean-removed pattern and the ROI mean alone, and each is judged separately, so that a result that transfers only through the mean is not reported as shared pattern information.
-
-\textbf{Inference.} The participant is the unit. Each participant's accuracy $a$ is treated as exchangeable with $1-a$ under the null, and the group mean is compared with the $2^n$ sign-flipped means (exact for $n\le14$). The smallest attainable two-sided $p$ is $2/2^n$, i.e.\ $0.0078$ at $n=8$. P-values are corrected by Benjamini--Hochberg FDR \cite{benjamini1995} across ROIs and directions. We also report the number of participants above 0.5, since a mean driven by two participants is not a group effect.
-
-\textbf{Demand-axis correlation.} For each ROI we form the demand pattern (2-back minus 0-back, averaged over categories) and the Language pattern (Math minus Story) from independent runs, and correlate them (Pearson, which removes each ROI's mean) across grayordinates between different runs (LR of one task with RL of the other and vice versa, averaged), which removes the shared-noise correlation within one run. The correlation is compared with the within-task cross-run correlations of each pattern, and a reliability-corrected value (dividing by the geometric mean of the two within-task LR/RL reliabilities, an attenuation correction) is reported only where both reliabilities exceed 0.2, because the correction diverges for near-zero reliabilities. Participant-level significance uses the sign-flip test.
-
-\textbf{Mantel test and noise ceiling.} To compare the representational structure of the $4\times4$ category RDMs between the two loads we use a Mantel test (5{,}000 joint permutations of the category labels on both axes of one RDM) with Spearman and Kendall rank correlations \cite{mantel1967}; confidence intervals resample participants. A descriptive noise ceiling is obtained, per ROI and load, by correlating each participant's RDM with the mean RDM of the others (lower bound) and with the mean including the participant (upper bound); it is reported only with at least three participants.
-
-\subsection{Event-timing audit}
-\label{sec:timing}
-Cross-participant decoding can be inflated when the stimulus schedule is shared across participants, because anything locked to the schedule (scanner drift, respiratory or cardiac phase, low-frequency fluctuations common to the group) then becomes a predictor of the label. For every participant and run we extracted block onsets and compared them across participants, calling two schedules ``shared'' when all onsets agree within 0.5\,s. For each task we report the number of distinct schedules, the largest onset difference, and a verdict. Where schedules are shared, a leave-one-category-out check and the ROI-mean-removed analysis of Section~\ref{sec:amp} are used to judge whether an effect depends on the schedule; both were run on these data (Section~\ref{sec:res-cat}). The audit tolerance of the first notebook run was 0.01\,s, which flags every participant, so the 0.5\,s criterion is applied to the printed onset differences. In our data the WM schedule is shared within about 0.32\,s across participants, while the Language schedule differs between participants; consequently, label effects that are specific to one category and a fixed position in the schedule (places, in particular) are interpreted cautiously.
-
-\textbf{Schedule-shift and block-position controls.} Two further controls were run for the parietal category result on the four people with resting-state data. First, the real task design was shifted circularly in time by a random amount and laid over a random resting window (1000 draws, every person and run), and the same decoders were run; the task accuracy on the same four people was compared with this distribution ($p=(1+\#\ge)/(n+1)$). Second, each block's position in the run (1--8, from the event onsets) was regressed out of the eight condition patterns of every person and run, linearly or linearly plus quadratically, in the task data and in every resting draw, before decoding. Position removal can take out slow drift tied to position; it cannot remove fast fluctuations that happen to line up with the schedule. With four people these controls speak for those four only.
-
-\subsection{Statistical inference}
-Throughout, the participant is the unit of replication. Group statistics are either sign-flip tests (for statistics that are symmetric around a null value; exact enumeration of the $2^n$ flips for the cross-task decoders, and a Monte Carlo approximation with 10{,}000 random sign assignments for the RSA, loss, removal and demand-axis statistics), label-permutation tests that re-run the complete pipeline, or participant bootstrap intervals; none treats blocks or grayordinates as independent. Multiple comparisons are controlled by Benjamini--Hochberg FDR \cite{benjamini1995} within families that are fixed before the analysis (the confirmatory family is the set of ROI $\times$ target tests for H1--H4; anything else is exploratory and labelled so). With $n=8$ the exact sign-flip test has a smallest p-value of $0.0078$ (two-sided), so the results are interpreted through effect sizes and intervals as much as p-values, and a result that rests on the smallest attainable p-value is flagged.
-
-\subsection{Approaches tried and abandoned}
-\label{sec:failed}
-Two analyses that we implemented did not hold up and were replaced; we report them to explain choices made above.
-
-\textbf{(1) A six-pair rank-correlation statistic for invariance.} The first version of H1 compared the 0-back and 2-back category RDMs by a single Spearman correlation over their $\binom{4}{2}=6$ off-diagonal entries, as is common in the RSA literature \cite{kriegeskorte2008,nili2014}. With six pairs the statistic takes few distinct values and is dominated by ties and a single misordered pair, so it is highly variable even under the null: in the one resting-state participant processed with the matched null of Section~\ref{sec:rest}, the null distribution of $\rho$ was very wide (standard deviation about 0.46), and the BH-adjusted $q$ for that participant was $\approx0.996$, i.e.\ the statistic could not separate signal from the null. It also cannot express equivalence: a non-significant correlation is not evidence of a shared code, and a high one does not rule out a change of scale. We replaced it by the full $8\times8$ model with separate transfer and gain terms, the permutation reference, and the TOST of Section~\ref{sec:h1}. The Mantel/Spearman comparison of Section~\ref{sec:demand} is kept only as a descriptive companion.
-
-\textbf{(2) A block-level label-flip null for cross-task decoding.} We first assessed cross-task decoding by permuting (flipping) the labels of individual test blocks. The Story-versus-Math pattern is nearly identical across participants, and the test blocks of one participant (and of different participants, where the schedule is shared) are not independent samples, so the null was far too narrow and returned $p$-values that were too small even for effects we could not otherwise support, an anti-conservative test. We replaced it by the participant-level exact sign-flip test of Section~\ref{sec:demand}, accepting that its smallest p is $2/2^n$. A related bug found at the same stage, in which a verdict rule declared ``no transfer'' whenever the full-pattern accuracy was below 0.6 even though the pattern-only decoder transferred, was fixed by judging the pattern-only and mean-only decoders separately.
-
-\subsection{Limitations of the methods}
-Three checks are not yet done or are incomplete: a spatial (spin) permutation test that would keep the cortical autocorrelation when relating ROI maps (it needs the sphere files); the resting-state controls for the four participants who lack resting-state data; and the resting-state decoding control with more than 100 draws for regions other than parietal cortex (parietal category was repeated with 1000 draws, Section~\ref{sec:rest}). The parietal ``unchanged across load'' test was not repeated with places removed, although the plain decoding was (Section~\ref{sec:res-cat}). With $n=\Nsub$ the analyses are best read as a pilot, and no formal power calculation was performed. The ROI definitions come from a group-based parcellation, and the largest ROIs contain about four times as many grayordinates as the smallest, so ROI comparisons are descriptive.
+\textbf{Limitations of the methods.} Not done: a spin permutation test (needs sphere files), resting controls for the other four people, more than 100 decoding draws outside parietal cortex, and the parietal ``unchanged across load'' test with places removed. No power calculation was done; ROI definitions are group-based.
 
 \section{Results}
-\label{sec:results}
+All results use \Nsub{} participants. Chance is $0.25$ for category (four classes) and $0.50$ for load and Math/Story; ``reliable'' (bold) means passing a test corrected for multiple comparisons.
 
-\subsection{How to read the results}
-All results come from the \Nsub{} participants. A short key to the terms used:
-\begin{itemize}
-\item \textbf{Regions.} EVC: early visual cortex. OT ventral and OT lateral: visual-object regions on the underside and the side of the back of the brain. AUD early and AUD assoc: basic and higher-level auditory cortex. FP dlpfc: lateral prefrontal cortex. FP parietal: parietal cortex. Cing/pre-SMA: cingulate and medial frontal cortex.
-\item \textbf{Category and load.} Category is the type of picture (faces, places, tools, body parts). Load is how hard the memory task is: 0-back (easy) or 2-back (hard).
-\item \textbf{Decoding accuracy.} A computer program learns to guess the condition from the pattern of activity in one region, using other people's data, and is then tested on a person it has not seen. Scores are the proportion of correct guesses. Pure guessing scores $0.25$ for the four categories and $0.50$ for two-way choices such as easy versus hard.
-\item \textbf{Reliable.} A result is called reliable if it passes a statistical test that allows for the many comparisons we ran (bold in the tables). With eight people, the strongest result possible is that every person shows the same effect, so we also say how many people show it.
-\end{itemize}
+\textbf{Preliminary checks.} In one person, regions more active at 2-back overlapped regions more active for Math than Story about 7.5 times more than chance (descriptive, no test). All eight saw WM blocks within about 0.3\,s of each other, and Language timing differed. Places blocks came late in both runs (correlation with time $+0.61$, $+0.51$), so places is the category most at risk of being confused with time.
 
-\subsection{Preliminary checks}
-\textbf{Brain maps in one person.} In one participant, the areas that were more active during 2-back overlapped strongly with the areas that were more active during Math than during Story, about 7.5 times more than expected by chance. The overlap with Story areas was well below chance. This supports our choice to pair Math with 2-back later on. It is a description of one person and carries no statistical test.
-
-\textbf{Timing of the task.} All eight participants saw the working-memory blocks at almost the same times (within about a third of a second). The Language blocks differed between people. Shared timing matters because anything that drifts over time in the scanner can then look like a task effect when we decode across people. The places blocks tended to come late in both runs (a correlation with time of $+0.61$ and $+0.51$), so places is the category most at risk of being mixed up with time. We return to this below.
-
-\subsection{Can the picture category be read out, and where?}
-\label{sec:res-cat}
-\begin{table}[t]
-\caption{Reading out picture category (four choices; guessing $=0.25$). Same load: trained and tested at the same load. Other load: trained on one load, tested on the other. Loss is the drop between the two. Bold: reliable. Loss is shown only for regions where category can be read out.}
+\begin{table}[!tb]
+\caption{Category and load decoding (other people's data). Cat.\ same/other: trained and tested at the same/other load; loss shown where category is readable. Load: easy versus hard, full pattern and with average activity removed. Bold: reliable.}
 \label{tab:cat}
 \centering\footnotesize
-\begin{tabular}{@{}lccc@{}}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
-Region & Same load & Other load & Loss \\
+ & \multicolumn{3}{c}{Category (0.25)} & \multicolumn{2}{c}{Load (0.50)}\\
+\cmidrule(lr){2-4}\cmidrule(l){5-6}
+Region & Same & Other & Loss & Full & Mean rem.\\
 \midrule
-EVC & \textbf{0.77} & \textbf{0.61} & 0.16 \\
-OT ventral & \textbf{0.72} & \textbf{0.63} & 0.09 \\
-OT lateral & \textbf{0.63} & \textbf{0.52} & 0.11 \\
-AUD early & 0.27 & 0.21 & -- \\
-AUD assoc & 0.31 & 0.25 & -- \\
-FP dlpfc & 0.34 & 0.20 & -- \\
-FP parietal & \textbf{0.50} & \textbf{0.47} & 0.03 \\
-Cing/pre-SMA & 0.34 & 0.21 & -- \\
+EVC & \textbf{0.77} & \textbf{0.61} & 0.16 & \textbf{0.68} & \textbf{0.66}\\
+OT ventral & \textbf{0.72} & \textbf{0.63} & 0.09 & \textbf{0.66} & 0.52\\
+OT lateral & \textbf{0.63} & \textbf{0.52} & 0.11 & \textbf{0.64} & \textbf{0.61}\\
+AUD early & 0.27 & 0.21 & -- & 0.61 & 0.58\\
+AUD assoc & 0.31 & 0.25 & -- & \textbf{0.70} & \textbf{0.70}\\
+FP dlpfc & 0.34 & 0.20 & -- & \textbf{0.71} & \textbf{0.72}\\
+FP parietal & \textbf{0.50} & \textbf{0.47} & 0.03 & \textbf{0.77} & \textbf{0.79}\\
+Cing/pre-SMA & 0.34 & 0.21 & -- & \textbf{0.66} & \textbf{0.64}\\
 \bottomrule
 \end{tabular}
 \end{table}
-Category could be read out reliably in early visual cortex, in both visual-object regions and in parietal cortex, and in none of the other regions (Table~\ref{tab:cat}). In the easy 0-back condition the program was right $0.81$ of the time in early visual cortex, $0.78$ in OT ventral and $0.69$ in OT lateral. Parietal cortex was the only region outside the visual system with a category signal, and it was weaker (about $0.50$). Figure~\ref{fig:decoding} shows each person's score.
 
-\begin{figure*}[t]
+\textbf{Category (H1).} Category was reliably readable in EVC, both OT regions and parietal cortex, and in no other region (Table~\ref{tab:cat}; Fig.~\ref{fig:decoding}). At 0-back accuracy was $0.81$ (EVC), $0.78$ (OT ventral), $0.69$ (OT lateral); parietal was weaker (${\sim}0.50$). Within a person, one run identified the other run's pattern $0.82$--$0.87$ of the time in the three visual regions (chance $0.50$), and no other region was reliable. The signal is distributed: with the half most category-selective locations removed, visual regions still identified category ${\sim}0.7$ of the time, though removal cost more than random removal, so the signal is spread but not evenly.
+
+\textbf{Caution on parietal cortex.} When places were removed, parietal cross-load accuracy fell from $0.22$ to $0.05$ above chance (4 of 8 people above chance), while visual regions were unaffected. Together with the places--time correlation and the fact that the only parietal pairs that worked across load included places, part of the parietal category signal may come from task timing, not the pictures.
+
+\begin{figure}[!tb]
 \centering
-\includegraphics[width=0.97\textwidth]{figures/fig_decoding.png}
-\caption{Reading out picture category and memory load from each region, using other people's data. Each dot is one held-out person and the black bar is the average. Grey bands show what guessing would give. The first four dots per region are category (trained and tested at the same load, or trained at one load and tested at the other); the last is memory load. Stars mark results that pass the statistical test.}
+\includegraphics[width=\columnwidth]{figures/fig_decoding.png}
+\caption{Category (same load, other load) and load decoding per region from other people's data. Each dot is one held-out person, the bar the average, grey bands what guessing gives, stars reliable results.}
 \label{fig:decoding}
-\end{figure*}
+\end{figure}
 
-We also checked this inside each person, without a computer program. Within the same person, the activity pattern from one scan run identified the matching pattern from the other run about $0.82$ to $0.87$ of the time in the three visual regions (guessing $=0.50$). No other region was reliable on this measure.
-
-The category signal is spread over many locations rather than sitting in a few. When we removed the half of the locations that responded most strongly to category, the visual regions could still identify the category about $0.7$ of the time. Removing them did cost more than removing the same number of random locations, so the signal is spread out but not evenly.
-
-\textbf{A caution about parietal cortex.} Parietal cortex is the most interesting result, so we tried to break it. We repeated the analysis with each category removed in turn. In the visual regions the signal stayed. In parietal cortex it held up when faces, tools or body parts were removed, but when places were removed the cross-load result fell close to guessing (from $0.22$ above chance to $0.05$ above chance; only 4 of 8 people above chance). Because places blocks are tied to time (see above), part of the parietal category signal may come from the timing of the task and not from the pictures (Figure~\ref{fig:loco}). The pairwise tests agree: the only pairs that worked across load in parietal cortex were the ones that include places. The resting-state check below points the same way.
-
-\begin{figure*}[t]
+\begin{figure}[!tb]
 \centering
-\includegraphics[width=0.97\textwidth]{figures/fig_leave_one_category.png}
-\caption{Does the picture code depend on one category? Each panel is a region. Bars show how far above guessing the decoder scored when one category was left out (``no places means faces, tools and body only). Solid bars are tested at the same load and hatched bars at the other load. Dots mark results that pass the statistical test. The visual regions stay high whatever is removed. In parietal cortex the across-load score collapses when places is removed.}
+\includegraphics[width=\columnwidth]{figures/fig_leave_one_category.png}
+\caption{Does the category code depend on one category? Bars: score above guessing with one category left out (solid: same load, hatched: other load); dots: reliable. Visual regions stay high; in parietal cortex the across-load score collapses when places is removed.}
 \label{fig:loco}
-\end{figure*}
+\end{figure}
 
-\subsection{Where is memory load, and is it a pattern or just more activity?}
-\begin{table}[t]
-\caption{Reading out memory load (easy versus hard; guessing $=0.50$), from the full pattern and after removing each region's average activity. Bold: reliable.}
-\label{tab:load}
-\centering\footnotesize
-\begin{tabular}{@{}lcc@{}}
-\toprule
-Region & Full pattern & Average removed \\
-\midrule
-EVC & \textbf{0.68} & \textbf{0.66} \\
-OT ventral & \textbf{0.66} & 0.52 \\
-OT lateral & \textbf{0.64} & \textbf{0.61} \\
-AUD early & 0.61 & 0.58 \\
-AUD assoc & \textbf{0.70} & \textbf{0.70} \\
-FP dlpfc & \textbf{0.71} & \textbf{0.72} \\
-FP parietal & \textbf{0.77} & \textbf{0.79} \\
-Cing/pre-SMA & \textbf{0.66} & \textbf{0.64} \\
-\bottomrule
-\end{tabular}
-\end{table}
-Load could be read out reliably in seven of the eight regions, with scores from $0.64$ to $0.77$ (Table~\ref{tab:load}). The highest were parietal cortex ($0.77$), prefrontal cortex ($0.71$) and auditory association cortex ($0.70$). These regions overlap in their uncertainty, so the ranking is only a rough guide.
+\textbf{Load (H2a).} Load was reliably readable in seven of eight regions ($0.64$--$0.77$; Table~\ref{tab:cat}), highest in parietal ($0.77$), prefrontal ($0.71$) and auditory association ($0.70$), though intervals overlap. In prefrontal and parietal cortex activity was higher at 2-back in nearly everyone (8/8, 7/8) and load survived removal of average activity, so the signal is a spatial pattern; the same held in auditory association cortex. In OT ventral, activity was lower at 2-back in all eight, and load vanished with the average removed: an overall activity change.
 
-Load can be read out in two ways: the region may simply be more active when the task is hard, or the spatial pattern of activity may change. To tell these apart we removed each region's average activity and repeated the analysis. In prefrontal and parietal cortex activity was higher during 2-back in nearly everyone (8 of 8 and 7 of 8 people), but load could still be read out after the average was removed, so the signal is a spatial pattern. The same was true in auditory association cortex. The opposite happened in OT ventral: activity was lower during 2-back in all eight people, and load could no longer be read out once the average was removed. There the signal is a change in overall activity.
+\textbf{Does the category code survive load (H2b)?} Visual regions kept most but not all category signal: loss was $0.16$ (EVC), $0.09$ (OT ventral), $0.11$ (OT lateral). Parietal lost only $0.03$, inside the $0.10$ margin set beforehand, but this did not survive correction over eight regions and leans on places. We cannot say the code is unchanged, nor that it changes: with eight people, showing sameness is much harder than showing a difference. The full-RDM analysis suggested one shared code of roughly constant strength in the visual regions; a rank comparison of category layout was suggestive in OT ventral, OT lateral and parietal but did not survive correction, and the SVM gave similar answers.
 
-\subsection{Does the picture code survive a change in load?}
-Visual cortex kept most, but not all, of its category signal when the load changed (Table~\ref{tab:cat}). The loss in accuracy was $0.16$ in EVC, $0.09$ in OT ventral and $0.11$ in OT lateral. Parietal cortex lost only $0.03$, the only region inside the margin of $0.10$ that we set beforehand as ``small enough to ignore''. This did not hold up once we corrected for testing eight regions, and, as shown above, the parietal result leans on places blocks. We therefore cannot say the category code is unchanged across load, and we cannot say it changes. With eight people, showing that two things are the same is much harder than showing that they differ.
-
-\begin{figure*}[t]
+\begin{figure}[!tb]
 \centering
-\includegraphics[width=0.97\textwidth]{figures/fig_load_survival.png}
-\caption{How much of the category code survives a change in load? A: accuracy at the same load (blue) and the other load (orange). B: the share of the above-guessing accuracy that carries over. C: accuracy lost when load changes; the green band is the small loss we said we would ignore. D: how similar the layout of the categories is at the two loads (1 means the same). Regions with no reliable category code are labelled as such.}
+\includegraphics[width=\columnwidth]{figures/fig_load_survival.png}
+\caption{How much of the category code survives a change in load? A: accuracy at the same and the other load. B: share of above-guessing accuracy that carries over. C: accuracy lost; green band is the margin set beforehand. D: similarity of category layout at the two loads.}
 \label{fig:survival}
-\end{figure*}
+\end{figure}
 
-A second analysis used the full pattern of distances between conditions, and asked whether categories that differ at 0-back also differ at 2-back. Here the visual regions behaved as if they shared one code across loads, and the strength of the code was roughly constant. A rank-based comparison of the category layout between loads was suggestive in OT ventral, OT lateral and parietal cortex but did not survive correction. A second type of classifier gave similar answers to our main one.
+\textbf{Resting-state check (H3).} For category across load, early visual and OT ventral beat the resting level ($p=0.001$, $q=0.004$) and OT lateral was borderline ($p=0.019$, $q=0.051$); parietal ($p=0.39$) and all other regions did not (Fig.~\ref{fig:rest-decoding}, Fig.~S1). Category decoding in EVC and OT ventral beat it in all four train/test combinations ($q=0.028$); parietal passed one (2-back to 2-back, $q=0.05$) and neither across-load one ($q\approx0.44$). Load beat the resting level in OT ventral, auditory association, prefrontal, parietal and cingulate ($q=0.028$) and just reached it in OT lateral ($q=0.05$), but not in EVC ($q=0.40$) or early auditory ($q=0.31$); parietal task accuracy was $0.89$ on these four people against about $0.50$ for rest. With four people and 100 draws, a failure to pass may partly reflect sample size. The older rank statistic could not separate signal from null anywhere.
 
-\subsection{Resting-state check}
-\label{sec:res-rest}
-Four of the eight people also had resting-state scans, which contain no task. We laid the real task timing over random stretches of these scans and ran the same analysis a thousand times (for the group null) or a hundred times (for decoding). Anything the method finds there is not about the task, so it shows what the method gives by chance, including the effect of the shared timing.
+\textbf{Parietal category against a schedule-only null.} Across load, accuracy never beat the schedule-shifted null in any version: $0.31$ both directions as analysed ($p=0.27$), after linear ($p=0.30$, $0.43$) and linear-plus-quadratic ($p=0.17$, $0.10$) position removal (Fig.~S7, Table~S1). Within a load results were unstable: 2-back to 2-back scored $0.50$ ($p=0.014$, $q=0.034$) but weakened under linear ($p=0.042$, $q=0.095$) and vanished under quadratic removal ($p=0.42$); 0-back to 0-back failed as analysed ($p=0.21$) and passed only after quadratic removal ($0.66$, $p=0.001$). A result that appears and disappears across versions, from four people and 32 test blocks, cannot be counted on; the across-load result that an ``unchanged code'' claim needs fails every time.
 
-\textbf{Does the category signal across load beat the resting-state level?} In the group of four, yes for early visual cortex and OT ventral cortex (both $p=0.001$, $q=0.004$ after correction), and borderline for OT lateral cortex ($p=0.019$, $q=0.051$). It was not above the resting-state level in parietal cortex ($p=0.39$) or in any other region (Figure~\ref{fig:rest-decoding} gives the matching decoding results; the full group-null plot is Figure~S1). The older rank-based statistic for comparing categories across loads could not separate signal from the null in any region, which supports our decision to replace it.
-
-\textbf{Does the decoding beat the resting-state level?} Category decoding in early visual cortex and OT ventral cortex beat it in all four train-and-test combinations (all $q=0.028$). In OT lateral cortex only one of the four did (trained at 0-back, tested at 2-back). No category result was reliable in the auditory regions, as expected. In parietal cortex only one of the four combinations passed (trained and tested at 2-back, $q=0.05$), and neither across-load combination did ($q\approx0.44$). Together with the ``no places'' result, this makes the parietal category result weak.
-
-\textbf{Load.} Load beat the resting-state level in OT ventral, auditory association, prefrontal, parietal and cingulate cortex (all $q=0.028$), and just reached it in OT lateral cortex ($q=0.05$). It did \emph{not} in early visual cortex ($q=0.40$) or in basic auditory cortex ($q=0.31$). So the claim that load can be read out in seven of eight regions holds against chance but is weaker against the resting-state level for early visual cortex. Parietal cortex had the strongest load result (task accuracy $0.89$ on these four people, against about $0.50$ for rest).
-
-This control uses only four people and only 100 draws, so it cannot give a smaller $q$ than $0.028$. It can show that a result is above the resting-state level, but a failure to pass may partly reflect the small sample.
-
-\textbf{Parietal category against a schedule-only null.} Because the parietal category result is the one most exposed to the shared timing, we repeated its resting-state control with 1000 draws in which the task timing was also shifted in time, and again after removing each block's position in the run (Figure~S7, Table~S1). Across load, accuracy never beat the schedule-only level in any version: $0.31$ in both directions as analysed ($p=0.27$), after linear position removal ($p=0.30$ and $0.43$) and after linear plus quadratic removal ($p=0.17$ and $0.10$). Within a load the picture was mixed and not stable. Trained and tested at 2-back, accuracy was $0.50$ and beat the null as analysed ($p=0.014$, $q=0.034$) and weakly after linear removal ($p=0.042$, $q=0.095$), but not after quadratic removal ($0.28$, $p=0.42$). Trained and tested at 0-back, it did not beat the null as analysed ($0.34$, $p=0.21$) or after linear removal ($p=0.085$), but did after quadratic removal ($0.66$, $p=0.001$, $q=0.004$). A result that appears under one version and disappears under another, in four people with only 32 test blocks per analysis, is not one we can count on; quadratic removal also leaves only five degrees of freedom across the eight blocks. The cross-load result, which is the one the claim of an unchanged code needs, fails the schedule-only control every time. For reference, the same decoders on all eight people scored $0.42$--$0.55$ as analysed and after linear removal, above the 95th percentile of the four-person null, but that null was not built for eight people and we do not lean on it.
-
-\begin{figure*}[t]
+\begin{figure}[!tb]
 \centering
-\includegraphics[width=0.97\textwidth]{figures/fig_rest_decoding.png}
-\caption{Resting-data control for the decoders. The grey bar is the range of scores obtained when the real task timing is laid over resting scans, where there is no task. The coloured dot is the real task score for the same four people. A dot well outside the bar is above the resting-state level. Early visual and OT ventral cortex stand out for category; load stands out in most regions except early visual and early auditory cortex.}
+\includegraphics[width=\columnwidth]{figures/fig_rest_decoding.png}
+\caption{Resting-data control for the decoders. Grey bar: range of scores with the real task timing laid over resting scans; dot: real task score for the same four people. Early visual and OT ventral stand out for category, and most regions except early visual and early auditory for load.}
 \label{fig:rest-decoding}
-\end{figure*}
+\end{figure}
 
-\subsection{Is the demand signal shared between the two tasks?}
-\begin{table}[t]
-\caption{A load decoder applied to the Language task, and the similarity of the two demand patterns. Left: a program trained on easy versus hard memory blocks is asked to tell Math from Story (Math is treated as the hard one; guessing $=0.50$). Middle: the same after removing average activity. Right: correlation between the memory-load pattern and the Math$-$Story pattern, measured on separate runs. Bold: reliable.}
+\begin{table}[!tb]
+\caption{Load decoder applied to Language (Math treated as hard) with and without average activity, and correlation between the load and Math$-$Story patterns across separate runs. Bold: reliable.}
 \label{tab:xt}
 \centering\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lccc@{}}
 \toprule
-Region & Math vs Story & Average removed & Pattern correlation \\
+Region & Math/Story & Mean rem. & Pattern corr.\\
 \midrule
-EVC & 0.88 & 0.88 & 0.09 \\
-OT ventral & 0.75 & 0.63 & \textbf{0.07} \\
-OT lateral & 0.81 & 0.81 & \textbf{0.18} \\
-AUD early & 0.75 & 0.31 & 0.05 \\
-AUD assoc & \textbf{1.00} & \textbf{1.00} & \textbf{0.12} \\
-FP dlpfc & \textbf{1.00} & \textbf{0.94} & \textbf{0.24} \\
-FP parietal & \textbf{1.00} & \textbf{1.00} & \textbf{0.43} \\
-Cing/pre-SMA & \textbf{0.94} & \textbf{0.94} & \textbf{0.21} \\
+EVC & 0.88 & 0.88 & 0.09\\
+OT ventral & 0.75 & 0.63 & \textbf{0.07}\\
+OT lateral & 0.81 & 0.81 & \textbf{0.18}\\
+AUD early & 0.75 & 0.31 & 0.05\\
+AUD assoc & \textbf{1.00} & \textbf{1.00} & \textbf{0.12}\\
+FP dlpfc & \textbf{1.00} & \textbf{0.94} & \textbf{0.24}\\
+FP parietal & \textbf{1.00} & \textbf{1.00} & \textbf{0.43}\\
+Cing/pre-SMA & \textbf{0.94} & \textbf{0.94} & \textbf{0.21}\\
 \bottomrule
 \end{tabular}
 \end{table}
-A program trained to tell hard from easy memory blocks, using other people's data, could tell Math from Story in the Language task (Table~\ref{tab:xt}). It was reliable in auditory association, prefrontal, parietal and cingulate cortex. Accuracy was perfect in the first three, with all eight people above chance, and $0.94$ in cingulate cortex. In all four regions the result survived the removal of average activity, so it is not just a shift in overall activity. Visual regions and basic auditory cortex were above $0.5$ on average but did not pass the statistical test. Where the result was reliable, Math was never labelled as the easy condition.
 
-This result needs care. Story versus Math is itself very easy to read out in these regions (about $1.00$), so the load program only has to point in the same direction along an axis that is already clear. It shows that the two tasks agree in direction more than it shows an identical pattern. The reverse test, training on Math versus Story and testing on memory load, was weaker (about $0.58$ to $0.67$). It was reliable in OT ventral, OT lateral and prefrontal cortex, and in the two visual regions this came from the average activity and not the pattern.
+\textbf{Shared demand signal (H4).} A load decoder trained on other people told Math from Story reliably in auditory association, prefrontal, parietal ($1.00$, all eight people) and cingulate ($0.94$) cortex, surviving removal of average activity (Table~\ref{tab:xt}); visual and early auditory regions were above $0.5$ but not reliable. Math was never labelled easy. Because Story versus Math is itself readable at about $1.00$ there, this shows agreement in direction more than an identical pattern. The reverse direction was weaker ($0.58$--$0.67$), reliable in OT ventral, OT lateral and prefrontal cortex, and in the two visual regions through average activity, not pattern. The demand-pattern correlation, free of the ceiling problem, was largest in parietal ($0.43$), then prefrontal ($0.24$) and cingulate ($0.21$), small but above zero in OT lateral, auditory association and OT ventral, and null in EVC and early auditory; the load pattern was not very repeatable between runs outside prefrontal and parietal cortex, weakening those correlations by an unknown amount.
 
-The correlation between the two demand patterns (Figure~\ref{fig:demand}) gives the same picture without the problem of perfect scores. It was largest in parietal cortex ($0.43$), then prefrontal ($0.24$) and cingulate ($0.21$) cortex. It was smaller but above zero in OT lateral, auditory association and OT ventral cortex, and not different from zero in EVC or basic auditory cortex. The memory-load pattern was not very repeatable between runs outside prefrontal and parietal cortex, which weakens the correlations in the other regions by an unknown amount.
-
-\begin{figure}[t]
+\begin{figure}[!tb]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_demand_pattern.png}
-\caption{Do memory load and Math versus Story use the same spatial pattern? Each coloured symbol is one person, the black bar is the group average with its confidence interval, and the label above each region is the number of people with a positive correlation (a star means it passes the statistical test). The two patterns come from different scanner runs. Parietal cortex has the largest correlation.}
+\caption{Do memory load and Math versus Story share a spatial pattern? Each symbol is one person, the bar the group mean with its interval, the label the number of people with a positive correlation (star: reliable). Patterns come from different runs; parietal is largest.}
 \label{fig:demand}
 \end{figure}
 
-\subsection{Summary of the evidence}
-\begin{table}[t]
-\caption{Status of each hypothesis after the \Nsub{}-person analysis.}
-\label{tab:summary}
-\centering\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}p{0.75cm}p{2.4cm}p{4.4cm}@{}}
-\toprule
- & Status & Our Interpretation \\
-\midrule
-H1 & Supported (visual regions) & Category can be read out reliably from early visual and visual-object cortex, and the signal is spread over many locations. \\
-H2a & Partly supported & Category in visual cortex (and perhaps parietal); load in seven of eight regions, highest in parietal. No clean split between regions. \\
-H2b & Not established & Visual cortex loses some category signal when load rises; we cannot show the code is unchanged. \\
-H3 & Partly supported & With four people: visual category (early visual, OT ventral) and load in five regions beat the resting-state level. Parietal category and early visual load do not; parietal cross-load category also fails a 1000-draw schedule-shift control. \\
-H4 & Partly supported & Memory-load decoder works on Math versus Story in prefrontal, parietal, cingulate and auditory association cortex; the reverse test is weak. \\
-\bottomrule
-\end{tabular}
-\end{table}
-The strongest results are: category in visual cortex; load in seven of eight regions, as a spatial pattern in prefrontal, parietal and auditory association cortex and as an activity change in OT ventral; transfer of the load decoder to Math versus Story in four regions; and a demand-pattern correlation that is largest in parietal cortex. The resting-state check supports the visual category result and load in five regions. It does not support parietal category information (also after shifting the schedule and removing block position) or load in early visual cortex. The results that remain open are whether the category code is unchanged across load, whether parietal category information is real or partly due to task timing, the reverse-direction transfer, and the resting-state controls for the four people without resting-state scans. Figure~\ref{fig:summary} gathers the main numbers in one view.
+\textbf{Summary.} H1 is supported in visual regions. H2a is partly supported (no clean split between regions). H2b is not established. H3 is partly supported: visual category and load in five regions beat the resting level, parietal category and early visual load do not. H4 is partly supported (reverse direction weak). Open: whether the code is unchanged across load, whether parietal category information is real, and resting controls for the other four people. Fig.~\ref{fig:summary} gathers the main numbers.
 
-\begin{figure*}[t]
+\begin{figure*}[!tb]
 \centering
-\includegraphics[width=0.97\textwidth]{figures/fig_summary_heatmap.png}
-\caption{All main results in one view. Each cell is one region and one analysis. The number is the group average (accuracy, or correlation where stated), the small number below is how many people were above chance, and stars mark results that pass the statistical test. Red is above chance and blue below. Hatched cells could not be interpreted.}
+\includegraphics[width=0.85\textwidth]{figures/fig_summary_heatmap.png}
+\caption{All main results in one view. Each cell is one region and one analysis: group average, below it the number of people above chance, stars for reliable results; red above chance, blue below, hatched cells could not be interpreted.}
 \label{fig:summary}
 \end{figure*}
 
 \section{Discussion and Conclusion}
-\label{sec:discussion}
+\textbf{What the data show.} Category in early visual and visual-object cortex \cite{haxby2001,kanwisher1997,epstein1998,downing2001} mostly confirms that the analysis works, and the spread signal agrees with \cite{haxby2001}; a similar result in a different dataset is a modest replication. Load was less localised than expected. In prefrontal, parietal and auditory association cortex it is a spatial pattern, fitting a system that serves many demands \cite{duncan2010}; in OT ventral it is an overall activity drop. Parietal category was unexpected, but depends on places blocks tied to timing and did not beat the resting level across loads, so it is a lead, not a finding. The category code survives load largely, but we cannot show fully: accuracy fell by $0.09$--$0.16$ in visual regions and no region passed the ``unchanged'' test, although part of the loss may reflect noisier 2-back data (EVC: $0.72$ against $0.81$). The cross-task results give the clearest support for a shared demand signal: Language timing differs between people, so shared timing is unlikely to explain them, and the pattern correlation points the same way, strongest in parietal cortex; the frontoparietal/sensory split is partial.
 
-\subsection{What the data show}
-\textbf{Picture category.} As expected, category could be read out from early visual and visual-object cortex \cite{haxby2001,kanwisher1997,epstein1998,downing2001}. This mostly confirms that our analysis works. The signal is spread over many locations, in line with earlier work \cite{haxby2001}, though not evenly. A similar result in a different dataset is a modest replication, not a new finding.
+\textbf{Novelty and contribution.}\label{sec:novelty} The individual findings agree with earlier work: category patterns in visual cortex \cite{haxby2001}, frontoparietal demand \cite{duncan2010,barch2013} and load-dependent sensory representations \cite{emrich2013}. We do not claim these. We add their combination on one dataset with controls: a model that separates how much of a code is shared across loads from how strong it is, with a test for ``unchanged'' \cite{kriegeskorte2013,bernardi2020,schuirmann1987}; a matched rfMRI control; mean-activity controls in every cross-task decoder \cite{coutanche2013}; a timing audit with schedule-shift and block-position controls; a demand-pattern comparison across two tasks; and a record of two analyses that failed at this sample size.
 
-\textbf{Memory load.} Load was less localised than we expected: seven of eight regions carried it against chance, although early visual cortex did not stand out against resting data. What the average-activity control adds is a difference in kind. In prefrontal, parietal and auditory association cortex the signal is a spatial pattern, which fits the idea of a brain system that serves many kinds of mental demand \cite{duncan2010}. In OT ventral it is an overall drop in activity in a region that is not specialised for memory load. Category was also readable in parietal cortex, which we did not expect. Because that signal depends on places blocks, and places blocks are tied to task timing, we treat it as a lead and not a finding.
+\textbf{Limitations.} (1) \emph{Small sample:} with eight people the strongest result is that everyone agrees, and showing invariance needs small between-person differences. (2) \emph{Shared WM timing} \cite{haynes2006}: removing places weakens parietal category and shifted timing on resting data did not rescue it. (3) \emph{Incomplete controls:} resting data for four of eight, 100 decoding draws, no spin test, and no places-removed ``unchanged'' test. (4) \emph{ROI sizes} differ about fourfold. (5) \emph{Measurement:} no spatial-noise correction of distances, group parcellation. (6) \emph{No behaviour} data, and hard blocks may differ in effort. (7) \emph{Many tests} were corrected within separate families, so the overall false-positive risk is higher than any single value suggests.
 
-\textbf{Does the category code survive a change in load?} Largely, but we cannot show fully. Cross-load accuracy stayed above chance in every region that had a category signal, and the pattern-distance analysis suggested one shared code of constant strength. Yet accuracy fell by $0.09$ to $0.16$ in the visual regions, and no region passed the test for ``unchanged''. Part of the loss may simply reflect that 2-back data are noisier (EVC: $0.72$ at 2-back against $0.81$ at 0-back) and not a change of code. Parietal cortex lost almost nothing, but only when places were included, so we do not count it as evidence for an unchanged code.
+\textbf{Future work.} Add participants (after a power calculation), resting data for everyone with more decoder draws, a places-removed parietal analysis, the spin test, noise-corrected distances, and links to behaviour; a mechanistic model of memory without sustained activity using short-term synaptic plasticity, as in the class models, could then be compared with the data.
 
-\textbf{A shared demand signal.} The cross-task results give the clearest support for a shared demand signal, with caveats. The decoder that read memory load also read Math versus Story in four regions, and not only through average activity. The Language task timing differs between people, so shared timing is unlikely to explain this. But because Story versus Math is already easy to read, the result shows agreement in direction more than a common pattern. The correlation between the two demand patterns, which has no such ceiling, points the same way: it is largest in parietal cortex. The split between frontoparietal and sensory regions is only partial: some sensory regions also showed a small shared signal, partly through average activity. We read this as a signal that is strongest and most pattern-like in parietal cortex, with weaker, partly activity-based contributions elsewhere, and not as a sharp boundary.
+\textbf{Conclusion.} In a pilot with eight HCP participants: (1) category can be read out reliably from early visual and visual-object cortex, spread over many locations; (2) load can be read out from most regions, as a spatial pattern in prefrontal, parietal and auditory association cortex and as an overall activity change in OT ventral; (3) the category code is largely kept across load but we could not show it unchanged, and the one region where it looked unchanged, parietal, depends on places blocks and did not beat the resting level, even with shifted timing and block position removed; (4) a load decoder also separates Math from Story in prefrontal, parietal, cingulate and auditory association cortex, most strongly in parietal. The study is limited by sample size, shared timing and resting data for four people; the code runs unchanged on a larger sample.
 
-\textbf{Resting-state check.} With four people, the method found nothing in resting data, and the category signal in early visual and OT ventral cortex (and, less clearly, OT lateral) was clearly above that level. Load beat the resting-state level in five regions and just reached it in a sixth, but not in early visual cortex. Parietal category information did not beat it when tested across loads. This agrees with the places result and makes us read the parietal category signal as unproven. A 1000-draw version with the task timing shifted, and again with block position removed, gave the same answer across loads and unstable answers within a load. The check is small (four people; 100 draws for decoding in the main analysis).
+\section*{Individual Contributions}
+The work was shared equally and every part was reviewed and verified by the other author for consistency; both contributed throughout. The primary focus of the 1\textsuperscript{st} author (Sai Veeksha Tavva) was project design and hypotheses, data preparation and the GLM, region definitions and RSA, and cross-subject decoding. The primary focus of the 2\textsuperscript{nd} author (Sahishnu Pawan Kumar) was the load and category-invariance analyses, the resting-state null and schedule controls, the cross-task analyses and figures, and the report and presentation.
 
-\subsection{Relation to earlier work and what is new}
-The individual findings agree with earlier work: category patterns in visual cortex \cite{haxby2001}, a frontoparietal response to working-memory demand \cite{duncan2010,barch2013}, and load-dependent quality of sensory representations \cite{emrich2013}. We do not claim these. What we add is their combination on one dataset with several controls: a model that separates how much of a code is shared across loads from how strong it is, with a test for ``unchanged'' rather than just ``not significantly different'' \cite{kriegeskorte2013,bernardi2020,schuirmann1987}; a resting-state control matched to the task analysis; controls for average activity in every cross-task decoder \cite{coutanche2013}; and a comparison of demand patterns across two tasks. Two analyses that we tried first turned out to be uninformative at this sample size (Section~\ref{sec:failed}).
-
-\subsection{Limitations}
-\label{sec:disc-limits}
-\begin{itemize}
-\item \textbf{Small sample.} With eight people, the strongest possible result is that everyone agrees. Showing that a code is unchanged is only possible when people differ little from one another.
-\item \textbf{Shared task timing.} Everyone saw the working-memory blocks at the same times, and places blocks are tied to time \cite{haynes2006}. Removing places weakens the parietal category result, and shifting the schedule or removing block position on resting data did not rescue it across loads, so that result is not yet secure.
-\item \textbf{Controls not complete.} The resting-state check covers four of the eight people, and the main decoder control used 100 draws (parietal category was repeated with 1000 shifted-schedule draws). The spatial control for the brain-map overlaps (a spin test) was not run, so those overlaps are descriptive. We also did not repeat the parietal ``unchanged across load'' test with places removed.
-\item \textbf{Region sizes.} Regions differ in size by about a factor of four, so comparing scores across regions is only descriptive.
-\item \textbf{Measurement choices.} We did not correct the distance measure for spatial noise, and we used a group map of regions, so region boundaries are blurred in individuals.
-\item \textbf{No behaviour.} We have no performance data, so we cannot link decoding to how well people did. Hard blocks may also differ from easy ones in effort, which would change pattern strength without changing the code.
-\item \textbf{Many tests.} Several sets of tests were corrected separately, so the overall chance of a false positive is higher than any single corrected value suggests.
-\end{itemize}
-
-\subsection{Future work}
-The most useful next steps are to add participants (after a power calculation), to collect resting-state data for everyone and to use more draws in the decoder control for every region, to repeat the parietal analysis without places, to run the spin test, to correct the distances for spatial noise, and to relate the demand signal to behaviour. A mechanistic model of memory without sustained activity, based on short-term changes in synapses of the kind used in the class models, could then be compared with the observed results. It is outside the present scope.
-
-\subsection{Conclusion}
-In a pilot with eight Human Connectome Project participants, we draw four conclusions. First, picture category can be read out reliably from early visual and visual-object cortex, spread over many locations. Second, memory load can be read out from most regions; in prefrontal, parietal and auditory association cortex it is a spatial pattern, and in OT ventral cortex it is a change in overall activity. Third, the category code is largely kept when load changes, but we could not show that it is unchanged, and the one region where it looked unchanged, parietal cortex, depends on the places blocks and did not beat the resting-state level, including with 1000 shifted-schedule draws and with block position removed. Fourth, a decoder of memory load also separates Math from Story in prefrontal, parietal, cingulate and auditory association cortex, strongest in parietal cortex. The study is limited by the small sample, the shared task timing, and a resting-state check available for four people. It is best read as a pilot, and the analysis code runs unchanged on a larger sample.
+\section*{Code Availability}
+Code and README: \url{https://github.com/veeksha12/incm-hcp-task-fmri-project}. The notebook \texttt{code-implementation.ipynb} is uploaded already run, so every result and plot can be checked without re-running it (a full run takes a long time). Further plots not shown here are in the supplement, the presentation slides and that notebook.
 
 \begin{thebibliography}{00}
 \bibitem{vanessen2013} D. C. Van Essen \emph{et al.}, ``The WU-Minn Human Connectome Project: an overview,'' NeuroImage, vol. 80, pp. 62--79, 2013.
