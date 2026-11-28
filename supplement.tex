@@ -33,6 +33,10 @@ Roll No.\ 2024113016}
 
 \maketitle
 
+This document holds the supplementary figures and one table for the main report. It is submitted separately from the report. Figures are numbered S1--S22 and Table S1 is the only table. Section A holds the controls and robustness checks (S1--S7, Table S1), B the first-level model checks (S8--S12), C the validation of the pattern analysis (S13--S15), D decoding across people (S16--S17), and E the load-invariance geometry (S18--S22). All figures use the eight participants unless the caption says otherwise.
+
+\section*{A. Controls and robustness checks}
+
 \setcounter{figure}{0}
 \renewcommand{\thefigure}{S\arabic{figure}}
 \renewcommand{\thetable}{S\arabic{table}}
@@ -101,5 +105,103 @@ Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section*{B. First-level model and quality checks (one participant)}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_glm_design.png}
+\caption{Design check for one participant (first-level model). Left: block onsets (shaded) and the convolved regressor for each working-memory condition (top) and for Story and Math (bottom), first run (LR), repetition time 0.72\,s. Right: the matching design matrices, with the condition regressors, head-motion terms and their derivatives, slow cosine drift terms and an intercept; each column is scaled to $\pm1$.}
+\label{figS:glmdesign}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_framewise_displacement.png}
+\caption{Head motion (framewise displacement) in the four runs of the same participant. Solid lines are the LR runs and dashed lines the RL runs; the dotted line marks 0.5\,mm. Mean displacement was 0.13--0.18\,mm in every run. The working-memory RL run has two brief spikes (about 2.4\,mm and 1\,mm).}
+\label{figS:fd}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_glm_fit_ar1.png}
+\caption{Model fit and noise structure. Top: data, model fit and residual at the grayordinate with the strongest Story$>$Math effect in the combined map (Language, LR run). Bottom left: autocorrelation of the residual at that grayordinate; dotted lines mark the approximate chance limits. Bottom right: distribution over all grayordinates of the first-order autoregressive coefficient used to whiten the data (working memory mean $\approx-0.01$, Language mean $\approx+0.03$).}
+\label{figS:glmfit}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_run_agreement.png}
+\caption{Do the two runs of one participant agree? Top: $t$ value of every grayordinate in the LR run against the RL run (working memory $r=0.34$, Language $r=0.54$; colour is the number of grayordinates per bin, log scale; dashed line is equality). Bottom: overlap (Dice) of the thresholded LR and RL maps as the threshold on $|t|$ rises from 1.5 to 5, for the positive (solid) and negative (dashed) tails.}
+\label{figS:runagree}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_wm_language_wholebrain.png}
+\caption{Whole-brain comparison of the working-memory load map (2-back $>$ 0-back) and the Story $>$ Math map for one participant (both runs combined). Top: every grayordinate, $r=-0.39$ (Spearman $\rho=-0.31$); dotted lines mark $|t|=3.1$. Bottom left: grayordinates beyond that threshold in both maps, observed (pink) against the number expected by chance (grey), descriptive only. Overlap is above chance where higher load meets Math$>$Story and where lower load meets Story$>$Math. Bottom right: left--right lateralisation index for each map; Story$>$Math is strongly left-lateralised.}
+\label{figS:wholebrain}
+\end{figure*}
+
+\section*{C. Validation of the pattern analysis}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_subject_rdms.png}
+\caption{What one participant's representational geometry looks like (four regions shown, participant 103414). Each cell is the cross-validated distance between two of the eight working-memory conditions, computed from the LR run against the RL run. Dark means the two conditions give similar patterns and bright means they differ. The expected value is zero when two conditions have the same true pattern, so negative values are kept. Rows and columns are 0-back then 2-back, in the order faces, places, tools, body.}
+\label{figS:subjrdm}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_positive_control.png}
+\caption{Positive control for the region masks. Each cell is the mean $t$ over the region for one working-memory condition; the small number is how many of the eight participants had a positive mean. Visual regions respond to the pictures in nearly everyone, and auditory regions do not. Prefrontal, parietal and cingulate regions are mostly positive, but weaker.}
+\label{figS:poscontrol}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_noise_ceiling.png}
+\caption{How reproducible each region's representational geometry is across people. Each bar runs from the lower bound (one participant's distance matrix against the mean of the others) to the upper bound (against the mean that includes them); the bar on the left of each pair is 0-back and on the right 2-back. No model is expected to beat the upper bound. Where a bar sits near zero (auditory association at 0-back, cingulate at 0-back) no comparison of geometry is meaningful.}
+\label{figS:ceiling}
+\end{figure*}
+
+\section*{D. Decoding across people}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_confusion.png}
+\caption{Which categories the decoder confuses, for each region. Rows are the true category and columns the predicted category (F faces, P places, T tools, B body); each row sums to 1 and chance is 0.25. Top row: trained and tested at the same load. Bottom row: trained at one load and tested at the other. Visual regions show a clear diagonal in both rows; tools and body are the most confused pair.}
+\label{figS:confusion}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_load_pattern_vs_mean.png}
+\caption{Is load carried by the pattern or by the average response? A: load decoding accuracy (chance 0.5) with the full pattern (grey) and with each region's mean activity removed (colour); the dashed line is the 97.5th percentile of the permutation null; $*$ marks FDR $q<0.05$ for the mean-removed decoder. B: change in mean $t$ from 0-back to 2-back in each region; dots are participants, the bar is the group mean, and the number above each region is how many participants had a positive change (EVC 3/8, OT ventral 0/8, OT lateral 0/8, auditory early 1/8, auditory association 2/8, dlPFC 8/8, parietal 7/8, cingulate 6/8).}
+\label{figS:loadpattern}
+\end{figure*}
+
+\section*{E. Does the category code survive a change of load?}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_transfer_gain.png}
+\caption{Category-code transfer across load (left) and category distinctness gain, 2-back over 0-back (right), for each participant (markers) and for the group (black bar). The shaded band on the left is the equivalence margin of $\pm0.25$ around 1; the dashed line is 1 in both panels. Regions with no reliable category geometry are marked and are not interpreted.}
+\label{figS:transfergain}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_pair_distances.png}
+\caption{Category geometry at the two loads. Each small marker is one pair of categories in one participant, with the distance at 0-back on the horizontal axis and at 2-back on the vertical axis; the large dot is the group mean for each of the six pairs. The dashed line is equality and the solid line is the fitted gain. Gain and transfer are printed in each panel (EVC 0.68 and 0.95, OT ventral 1.04 and 1.00, OT lateral 0.95 and 1.39, parietal 0.70 and 0.73).}
+\label{figS:pairdist}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_group_rdms.png}
+\caption{Group-mean $8\times8$ distance matrices on a shared colour scale. Rows and columns are the four categories at 0-back (0F, 0P, 0T, 0B) and at 2-back (2F, 2P, 2T, 2B); F faces, P places, T tools, B body. The white lines separate the loads. In the blocks above and below the diagonal blocks (distances across load), a dark diagonal means that the same category looks alike at both loads.}
+\label{figS:grouprdm}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_mds.png}
+\caption{Do categories keep their place under load? Two-dimensional scaling of the group distance matrix in each region. Circles are 0-back and triangles are 2-back; colour gives the category (faces orange, places green, tools blue, body pink). A short line joining the circle and triangle of a category means that it looks alike at both loads. The axes have no units and the layout is only meaningful within a panel.}
+\label{figS:mds}
+\end{figure*}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.97\textwidth]{figures/figS_voxel_removal.png}
+\caption{Category information in the most selective voxels. Filled dots show the accuracy lost by removing the 50\% most selective voxels, and open dots by removing the 30\% most selective, in each case minus the loss from removing the same number of random voxels (excess drop); bars are 95\% confidence intervals. Panels: within 0-back, within 2-back and across load. The labels on the right are the number of participants with a positive excess ($*$ marks FDR $q<0.05$).}
+\label{figS:voxelremoval}
+\end{figure*}
 
 \end{document}
