@@ -11,6 +11,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs,array}
+\usepackage{float}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
@@ -23,7 +24,7 @@
 \title{Supplementary Material for\\ Category and Load Effects in HCP Working Memory and Language Task-fMRI}
 
 \author{\IEEEauthorblockN{1\textsuperscript{st} Sai Veeksha Tavva}
-\IEEEauthorblockA{\textit{IIT Hyderabad} \\
+\IEEEauthorblockA{\textit{IIIT Hyderabad} \\
 Roll No.\ 2024113021}
 \and
 \IEEEauthorblockN{2\textsuperscript{nd} Sahishnu Pawan Kumar}
@@ -32,16 +33,70 @@ Roll No.\ 2024113016}
 }
 
 \maketitle
-
-This document holds the supplementary figures and one table for the main report. It is submitted separately from the report. Figures are numbered S1--S22 and Table S1 is the only table. Section A holds the controls and robustness checks (S1--S7, Table S1), B the first-level model checks (S8--S12), C the validation of the pattern analysis (S13--S15), D decoding across people (S16--S17), and E the load-invariance geometry (S18--S22). All figures use the eight participants unless the caption says otherwise.
-
-\section*{A. Controls and robustness checks}
-
 \setcounter{figure}{0}
 \renewcommand{\thefigure}{S\arabic{figure}}
 \renewcommand{\thetable}{S\arabic{table}}
+
+\noindent This document holds the supplementary figures and one table for the main report and is submitted separately from it. Figures are numbered S1--S22; Table S1 is the only table. All figures use the eight participants unless the caption says otherwise.
+
+\medskip\noindent\textbf{Contents}\par\nopagebreak
+{\small\setlength{\parindent}{0pt}\setlength{\parskip}{1pt}
+\textbf{A. Controls and robustness checks.}
+Figure~\ref{figS:restnull} group resting-state null for category transfer;
+\ref{figS:ident} recognising a condition from the other run;
+\ref{figS:schedule} block schedule;
+\ref{figS:parietal} four checks on the parietal result;
+\ref{figS:storymath} Story versus Math in visual cortex;
+\ref{figS:crosstask} load decoder applied to Math versus Story;
+\ref{figS:shift} parietal category against a schedule-only null, with Table~\ref{tabS:shift}.\par
+\textbf{B. First-level model and quality checks.}
+Figure~\ref{figS:glmdesign} design check;
+\ref{figS:fd} head motion;
+\ref{figS:glmfit} model fit and noise;
+\ref{figS:runagree} agreement between runs;
+\ref{figS:wholebrain} whole-brain load map against Story$>$Math.\par
+\textbf{C. Validation of the pattern analysis.}
+Figure~\ref{figS:subjrdm} one participant's distance matrices;
+\ref{figS:poscontrol} positive control for the region masks;
+\ref{figS:ceiling} noise ceiling.\par
+\textbf{D. Decoding across people.}
+Figure~\ref{figS:confusion} confusion matrices;
+\ref{figS:loadpattern} load: pattern or average response.\par
+\textbf{E. Does the category code survive a change of load?}
+Figure~\ref{figS:transfergain} transfer and gain;
+\ref{figS:pairdist} category-pair distances at the two loads;
+\ref{figS:grouprdm} group distance matrices;
+\ref{figS:mds} category geometry in two dimensions;
+\ref{figS:voxelremoval} selective-voxel removal.\par}
+
+\newpage
+\begin{table}[H]
+\caption{Parietal category decoding, four people, 1000 shifted-schedule draws. Acc.\ is task accuracy on the same four people; $p$ is one-sided against the draws; $q$ is corrected across all regions, analyses and versions.}
+\label{tabS:shift}
+\centering\small
+\begin{tabular}{llcccc}
+\toprule
+Version & Train$\to$test & Acc. & Null 95\% & $p$ & $q$ \\
+\midrule
+As analysed & 0$\to$0 & 0.34 & 0.41 & 0.211 & 0.34 \\
+ & 2$\to$2 & 0.50 & 0.44 & 0.014 & 0.034 \\
+ & 0$\to$2 & 0.31 & 0.38 & 0.273 & 0.42 \\
+ & 2$\to$0 & 0.31 & 0.38 & 0.271 & 0.42 \\
+Linear & 0$\to$0 & 0.41 & 0.41 & 0.085 & 0.17 \\
+ & 2$\to$2 & 0.44 & 0.41 & 0.042 & 0.095 \\
+ & 0$\to$2 & 0.31 & 0.41 & 0.297 & 0.44 \\
+ & 2$\to$0 & 0.28 & 0.38 & 0.425 & 0.55 \\
+Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
+ & 2$\to$2 & 0.28 & 0.41 & 0.420 & 0.55 \\
+ & 0$\to$2 & 0.34 & 0.38 & 0.172 & 0.30 \\
+ & 2$\to$0 & 0.38 & 0.38 & 0.096 & 0.19 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \begin{figure*}[t]
 \centering
+\noindent\textbf{\large A. Controls and robustness checks}\par\medskip
 \includegraphics[width=0.97\textwidth]{figures/figS_rest_null.png}
 \caption{Group resting-state null for category transfer across load. The grey histogram is what the method gives on resting data with the real task timing. Each coloured line is the task value for one of the four people with resting data. Note: the $p$ and $q$ values printed in the panels come from the first participant only; the group values are given in the text (early visual and OT ventral: $q=0.004$; OT lateral: $q=0.051$; parietal: $q=0.52$).}
 \label{figS:restnull}
@@ -82,29 +137,6 @@ This document holds the supplementary figures and one table for the main report.
 \caption{Parietal category decoding against a schedule-only null. Grey bars are the 95\% range of 1000 draws in which the real task timing was shifted in time and laid over resting data (four people); the small circle is the null mean. The filled dot is task accuracy on the same four people, and the open diamond is task accuracy on all eight. Rows: as analysed, with each block's position in the run removed (linear), and removed (linear plus quadratic). Panel titles read train load $\to$ test load. Across load (panels 3 and 4) the task never leaves the grey bar.}
 \label{figS:shift}
 \end{figure*}
-\begin{table}[!b]
-\caption{Parietal category decoding, four people, 1000 shifted-schedule draws. Acc.\ is task accuracy on the same four people; $p$ is one-sided against the draws; $q$ is corrected across all regions, analyses and versions.}
-\label{tabS:shift}
-\centering\small
-\begin{tabular}{llcccc}
-\toprule
-Version & Train$\to$test & Acc. & Null 95\% & $p$ & $q$ \\
-\midrule
-As analysed & 0$\to$0 & 0.34 & 0.41 & 0.211 & 0.34 \\
- & 2$\to$2 & 0.50 & 0.44 & 0.014 & 0.034 \\
- & 0$\to$2 & 0.31 & 0.38 & 0.273 & 0.42 \\
- & 2$\to$0 & 0.31 & 0.38 & 0.271 & 0.42 \\
-Linear & 0$\to$0 & 0.41 & 0.41 & 0.085 & 0.17 \\
- & 2$\to$2 & 0.44 & 0.41 & 0.042 & 0.095 \\
- & 0$\to$2 & 0.31 & 0.41 & 0.297 & 0.44 \\
- & 2$\to$0 & 0.28 & 0.38 & 0.425 & 0.55 \\
-Linear + quad. & 0$\to$0 & 0.66 & 0.41 & 0.001 & 0.004 \\
- & 2$\to$2 & 0.28 & 0.41 & 0.420 & 0.55 \\
- & 0$\to$2 & 0.34 & 0.38 & 0.172 & 0.30 \\
- & 2$\to$0 & 0.38 & 0.38 & 0.096 & 0.19 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \begin{figure*}[!t]
 \centering
